@@ -1,4 +1,4 @@
-# Setup
+# Developer How To
 
 ### Tools:
 1. Download git
@@ -10,7 +10,7 @@
    * Disable "Use non-modal commit interface"
    * <img src="how-to-images/git non_modal.png" alt="Alt text" width="500" height="250">
    
-### Setup:
+### Project Setup:
 1. Create a local directory, then initialize the directory to use git
     * `git init`
 2. Clone github project into your directory
