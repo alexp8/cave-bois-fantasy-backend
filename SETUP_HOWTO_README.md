@@ -1,4 +1,4 @@
-# cave-bois-fantasy-backend
+# Setup
 
 ### Tools:
 1. Download git
