@@ -18,4 +18,5 @@
 3. Setup Pycharm interpreter
    * <img src="how-to-images%2Fpycharm%20interpreter.png" alt="Alt text" width="600" height="450">
 4. Install Django
-   * `pip install django`
+   * `pip install django` or `python -m pip install django`
+5. `pip install requests`
