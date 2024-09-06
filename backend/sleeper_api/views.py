@@ -1,7 +1,8 @@
 import requests
+from django.http import JsonResponse
 from rest_framework.decorators import api_view
-from rest_framework.response import Response
 from django.conf import settings
+
 
 def fetch_data_from_sleeper_api(endpoint):
     """
@@ -11,34 +12,31 @@ def fetch_data_from_sleeper_api(endpoint):
     :return: Response with the JSON data or an error message.
     """
     url = f"{settings.SLEEPER_API_URL}/{endpoint}"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()  # Raises an HTTPError for bad responses
-        return Response(response.json())  # Return the JSON data if the request is successful
-    except requests.exceptions.RequestException as e:
-        return Response({"error": str(e)}, status=response.status_code if response else 500)
+    headers = {"Accept" : "application/json"}
+    print(url)
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return {"error": str("Failed getting data")}
 
 @api_view(['GET'])
-def get_players(request):
-    return fetch_data_from_sleeper_api("players/nfl")
-
-@api_view(['GET'])
-def get_transactions(request, league_id, round):
+def get_transactions(league_id, round):
     endpoint = f"league/{league_id}/transactions/{round}"
     return fetch_data_from_sleeper_api(endpoint)
 
 @api_view(['GET'])
 def get_users(request, league_id):
     endpoint = f"league/{league_id}/users"
-    return fetch_data_from_sleeper_api(endpoint)
+    return JsonResponse(fetch_data_from_sleeper_api(endpoint), safe=False)
 
 @api_view(['GET'])
-def get_rosters(request, league_id):
+def get_rosters(league_id):
     endpoint = f"league/{league_id}/rosters"
     return fetch_data_from_sleeper_api(endpoint)
 
 @api_view(['GET'])
-def get_matchups(request, league_id, week):
+def get_matchups(league_id, week):
     endpoint = f"league/{league_id}/transactions/{week}"
     return fetch_data_from_sleeper_api(endpoint)
 

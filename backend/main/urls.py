@@ -1,5 +1,5 @@
 """
-URL configuration for backend project.
+URL configuration for main project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/5.1/topics/http/urls/
@@ -19,6 +19,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),  # Admin panel
-    path('api/', include('myapp_api.urls')),  # Include API module's URLs
-    path('api/', include('external_api_module.urls')),  # Include external API module's URLs
+    path('api/', include('frontend_api.urls')),  # Include API module's URLs
+    path('api/', include('sleeper_api.urls')),  # Include external API module's URLs
 ]

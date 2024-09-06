@@ -1,4 +1,4 @@
-# Developer How To
+# Developer How-To
 
 ### Tools:
 1. Download git
@@ -7,9 +7,9 @@
    * https://www.python.org/downloads/release/python-3119/
 3. Download PyCharm Community
    * https://www.jetbrains.com/pycharm/download/?section=windows
-   * Disable "Use non-modal commit interface"
-   * <img src="how-to-images/git non_modal.png" alt="Alt text" width="500" height="250">
    
+---
+
 ### Project Setup:
 1. Create a local directory, then initialize the directory to use git
     * `git init`
@@ -20,3 +20,12 @@
 4. Install Django
    * `pip install django` or `python -m pip install django`
 5. `pip install requests`
+6. Right click 'backend' and mark as 'Sources Root'
+7. Run server
+   * `python manage.py runserver`
+
+---
+
+#### Tip
+   * Disable "Use non-modal commit interface"
+   * <img src="how-to-images/git non_modal.png" alt="Alt text" width="500" height="250">
