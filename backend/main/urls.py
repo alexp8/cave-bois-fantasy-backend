@@ -20,5 +20,4 @@ from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),  # Admin panel
     path('api/', include('frontend_api.urls')),  # Include API module's URLs
-    path('api/', include('sleeper_api.urls')),  # Include external API module's URLs
 ]

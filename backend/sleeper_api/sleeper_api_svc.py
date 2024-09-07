@@ -1,8 +1,5 @@
 import requests
-from django.http import JsonResponse
-from rest_framework.decorators import api_view
 from django.conf import settings
-
 
 def fetch_data_from_sleeper_api(endpoint):
     """
@@ -18,25 +15,19 @@ def fetch_data_from_sleeper_api(endpoint):
     if response.status_code == 200:
         return response.json()
     else:
+        print(str(response))
         return {"error": str("Failed getting data")}
 
-@api_view(['GET'])
 def get_transactions(league_id, round):
     endpoint = f"league/{league_id}/transactions/{round}"
     return fetch_data_from_sleeper_api(endpoint)
 
-@api_view(['GET'])
-def get_users(request, league_id):
-    endpoint = f"league/{league_id}/users"
-    return JsonResponse(fetch_data_from_sleeper_api(endpoint), safe=False)
+def get_users(league_id):
+    return fetch_data_from_sleeper_api(f"league/{league_id}/users")
 
-@api_view(['GET'])
 def get_rosters(league_id):
-    endpoint = f"league/{league_id}/rosters"
-    return fetch_data_from_sleeper_api(endpoint)
+    return fetch_data_from_sleeper_api(f"league/{league_id}/rosters")
 
-@api_view(['GET'])
 def get_matchups(league_id, week):
-    endpoint = f"league/{league_id}/transactions/{week}"
-    return fetch_data_from_sleeper_api(endpoint)
+    return fetch_data_from_sleeper_api(f"league/{league_id}/transactions/{week}")
 

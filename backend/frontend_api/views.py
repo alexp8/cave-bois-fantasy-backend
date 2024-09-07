@@ -1,9 +1,10 @@
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
-from sleeper_api.views import fetch_data_from_sleeper_api
+from sleeper_api.sleeper_api_svc import fetch_data_from_sleeper_api
 import json
 
 PLAYERS_JSON_FILE = 'sleeper_api/sleeper_data/get_players.json'
+DRAFT_PICKS_JSON_FILE = 'sleeper_api/sleeper_data/draft_picks.json'
 
 @api_view(['GET'])
 def get_players_from_sleeper(request):
@@ -39,16 +40,14 @@ def get_players_from_sleeper(request):
             json.dump(players_data, json_file, indent=4)
     else:
         print('cached players')
-        players_data = read_players()
+        players_data = load_json(PLAYERS_JSON_FILE)
     filtered_data = [{"first_name": item["first_name"], "last_name": item["last_name"]} for item in players_data.values()]
     return JsonResponse(filtered_data, safe=False)
 
 
-def read_players():
-    with open(PLAYERS_JSON_FILE, 'r') as file:
-        players_data = json.load(file)
-    return players_data
-
+def load_json(json_file_path):
+    with open(json_file_path, 'r') as file:
+        return json.load(file)
 
 @api_view(['GET'])
 def get_players_from_sleeper_like(request, search_str):
@@ -68,12 +67,19 @@ def get_players_from_sleeper_like(request, search_str):
             [{'first_name': 'John', 'last_name': 'Doe'}, {'first_name': 'Johnathan', 'last_name': 'Smith'}]
         """
 
-    players_data = read_players()
+    # read in player and draft pick data
+    players_data = load_json(PLAYERS_JSON_FILE)
+    draft_picks = load_json(DRAFT_PICKS_JSON_FILE)
+
+    # apply search
     filtered_data = [
         {"first_name": item["first_name"], "last_name": item["last_name"]}
         for item in players_data.values()
-        if search_str.lower() in item["first_name"].lower() or search_str.lower() in item["last_name"].lower()
+        if search_str.lower() in item["first_name"].lower()
+           or search_str.lower() in item["last_name"].lower()
+           or search_str.lower() in draft_picks.lower()
     ][:10]
 
+    # return up to 10 results
     return JsonResponse(filtered_data, safe=False)
 

@@ -17,15 +17,19 @@
    * `git clone https://github.com/alexp8/cave-bois-fantasy-backend.git`
 3. Setup Pycharm interpreter
    * <img src="how-to-images%2Fpycharm%20interpreter.png" alt="Alt text" width="600" height="450">
-4. Install Django
+4. Install Django and dependencies
    * `pip install django` or `python -m pip install django`
-5. `pip install requests`
-6. Right click 'backend' and mark as 'Sources Root'
-7. Optional, update `/backend/.env` with alternate host/port
-8. Run server
+   * `pip install djangorestframework`
+   * `pip install requests`
+5. Right click 'backend' and mark as 'Sources Root'
+6. Optional, update `/backend/.env` with alternate host/port
+7. Run server
    * from `backend/` enter `python manage.py runserver`
 
 ---
+
+### Dev backlog
+* Refactor project into docker application
 
 #### Tip
    * Disable "Use non-modal commit interface"
