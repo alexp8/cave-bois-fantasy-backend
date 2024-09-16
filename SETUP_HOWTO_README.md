@@ -21,6 +21,7 @@
    * `pip install django` or `python -m pip install django`
    * `pip install djangorestframework`
    * `pip install requests`
+   * `pip install django-cors-headers`
 5. Right click 'backend' and mark as 'Sources Root'
 6. Optional, update `/backend/.env` with alternate host/port
 7. Run server

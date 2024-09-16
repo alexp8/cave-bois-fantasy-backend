@@ -34,12 +34,10 @@ def get_players_from_sleeper(request):
     force_refresh = request.GET.get('force_refresh', 'False').lower() == 'true'
 
     if force_refresh is True:
-        print('fresh')
         players_data = fetch_data_from_sleeper_api("players/nfl")
         with open(PLAYERS_JSON_FILE, 'w') as json_file:
             json.dump(players_data, json_file, indent=4)
     else:
-        print('cached players')
         players_data = load_json(PLAYERS_JSON_FILE)
     filtered_data = [{"first_name": item["first_name"], "last_name": item["last_name"]} for item in players_data.values()]
     return JsonResponse(filtered_data, safe=False)
@@ -68,18 +66,33 @@ def get_players_from_sleeper_like(request, search_str):
         """
 
     # read in player and draft pick data
-    players_data = load_json(PLAYERS_JSON_FILE)
+    raw_players_data = load_json(PLAYERS_JSON_FILE)
     draft_picks = load_json(DRAFT_PICKS_JSON_FILE)
+
+    player_names_arr = [
+        f"{item['first_name']} {item['last_name']}"
+        for item in raw_players_data.values()
+        if 'first_name' in item and 'last_name' in item
+    ]
 
     # apply search
     filtered_data = [
-        {"first_name": item["first_name"], "last_name": item["last_name"]}
-        for item in players_data.values()
-        if search_str.lower() in item["first_name"].lower()
-           or search_str.lower() in item["last_name"].lower()
-           or search_str.lower() in draft_picks.lower()
+        name
+        for name in player_names_arr
+        if search_str.lower() in name.lower()
     ][:10]
+
+    # search for draft picks
+    filtered_data += [
+        draft_pick
+        for draft_pick in draft_picks
+        if search_str.lower() in draft_pick.lower()
+    ][:(10 - len(filtered_data))]
 
     # return up to 10 results
     return JsonResponse(filtered_data, safe=False)
+
+    # TODO a smart filter that puts most 'relevant' players on top
+
+    # TODO a smart filter that returns only offensive players
 
