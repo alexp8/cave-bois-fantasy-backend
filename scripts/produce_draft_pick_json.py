@@ -1,6 +1,6 @@
 import json
 
-
+# Create a json string array of draft picks, 5 rounds per year
 def main():
 
     picks = []

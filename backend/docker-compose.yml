@@ -1,0 +1,46 @@
+version: '3'
+
+services:
+#  app:
+#    container_name: fantasy_trades
+#    restart: always
+#    build:
+#      args:
+#        user: ${HOST_USER}
+#        uid: ${HOST_UID}
+#        debug: 0
+#      context: .
+#      dockerfile: Dockerfile
+#
+#    volumes:
+#      - ./fantasy_trades:/home/${HOST_USER}/site
+#    networks:
+#      - cncnet
+
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: fantasy_trades_db
+      POSTGRES_USER: fantasy_trades_appuser
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    environment:
+      DJANGO_DB_HOST: db
+      DJANGO_DB_NAME: fantasy_trades_db
+      DJANGO_DB_USER: fantasy_trades_appuser
+      DJANGO_DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+volumes:
+  postgres_data:

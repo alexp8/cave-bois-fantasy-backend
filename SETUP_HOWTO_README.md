@@ -29,9 +29,6 @@
 
 ---
 
-### Dev backlog
-* Refactor project into docker application
-
 #### Tip
    * Disable "Use non-modal commit interface"
    * <img src="how-to-images/git non_modal.png" alt="Alt text" width="500" height="250">
