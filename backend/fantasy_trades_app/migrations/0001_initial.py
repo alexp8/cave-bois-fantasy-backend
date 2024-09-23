@@ -4,10 +4,6 @@ class Migration(migrations.Migration):
 
     initial = True  # Marks this as the initial migration
 
-    dependencies = [
-        # Define dependencies if any, such as other apps' migrations that this migration relies on.
-    ]
-
     operations = [
         # Create table 'players'
         migrations.CreateModel(
@@ -30,7 +26,7 @@ class Migration(migrations.Migration):
         ),
         # Add a unique constraint for player_id and date in 'player_values'
         migrations.AlterUniqueTogether(
-            name='playervalues',
+            name='PlayerValues',
             unique_together={('player_id', 'date')},
         ),
     ]

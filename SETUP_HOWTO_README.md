@@ -7,6 +7,7 @@
    * https://www.python.org/downloads/release/python-3119/
 3. Download PyCharm Community
    * https://www.jetbrains.com/pycharm/download/?section=windows
+4. Install Docker
    
 ---
 
@@ -17,15 +18,13 @@
    * `git clone https://github.com/alexp8/cave-bois-fantasy-backend.git`
 3. Setup Pycharm interpreter
    * <img src="how-to-images%2Fpycharm%20interpreter.png" alt="Alt text" width="600" height="450">
-4. Install Django and dependencies
-   * `pip install django` or `python -m pip install django`
-   * `pip install djangorestframework`
-   * `pip install requests`
-   * `pip install django-cors-headers`
-5. Right click 'backend' and mark as 'Sources Root'
-6. Optional, update `/backend/.env` with alternate host/port
-7. Run server
-   * from `backend/` enter `python manage.py runserver`
+4. Right click 'backend' and mark as 'Sources Root'
+5. Run server
+   * from `backend/` enter `docker-compose up -d`
+
+##### Fresh build
+- `docker-compose build --no-cache`
+- `docker exec -it fantasy_trades_app /bin/bash`
 
 ---
 

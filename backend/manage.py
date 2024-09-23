@@ -3,15 +3,12 @@
 import os
 import sys
 
+
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'main.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'fantasy_trades_app.settings')
     host = os.getenv('DJANGO_RUNSERVER_HOST', '127.0.0.1')
     port = os.getenv('DJANGO_RUNSERVER_PORT', '8000')
-
-    from django.core.management import execute_from_command_line
-    execute_from_command_line(["manage.py", "runserver", f"{host}:{port}"])
-
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

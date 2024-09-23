@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'fantasy_trades_app',
     'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',

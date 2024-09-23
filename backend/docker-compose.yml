@@ -1,24 +1,8 @@
-version: '3'
 
 services:
-#  app:
-#    container_name: fantasy_trades
-#    restart: always
-#    build:
-#      args:
-#        user: ${HOST_USER}
-#        uid: ${HOST_UID}
-#        debug: 0
-#      context: .
-#      dockerfile: Dockerfile
-#
-#    volumes:
-#      - ./fantasy_trades:/home/${HOST_USER}/site
-#    networks:
-#      - cncnet
-
-  postgres:
+  db:
     image: postgres:latest
+    container_name: fantasy_trades_db
     environment:
       POSTGRES_DB: fantasy_trades_db
       POSTGRES_USER: fantasy_trades_appuser
@@ -27,20 +11,31 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    restart: always
 
   web:
+    container_name: fantasy_trades_app
     build: .
+    command: >
+      sh -c "
+      python manage.py migrate &&
+      python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
     ports:
       - "8000:8000"
+    restart: always
     depends_on:
-      - postgres
+      - db
     environment:
       DJANGO_DB_HOST: db
       DJANGO_DB_NAME: fantasy_trades_db
       DJANGO_DB_USER: fantasy_trades_appuser
       DJANGO_DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+networks:
+    fantasy_trades_net:
+        driver: bridge
 
 volumes:
   postgres_data:
