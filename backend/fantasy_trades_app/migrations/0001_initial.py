@@ -2,7 +2,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    initial = True  # Marks this as the initial migration
+    initial = True
 
     operations = [
         # Create table 'players'
@@ -18,15 +18,15 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='PlayerValues',
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False)),  # Auto-increment primary key
+                ('id', models.BigAutoField (auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),  # Auto-increment primary key
                 ('ktc_value', models.IntegerField()),  # Integer field for ktc_value
                 ('date', models.DateField()),  # Date field
-                ('player_id', models.ForeignKey(on_delete=models.CASCADE, to='fantasy_trades_app.Players')),  # Foreign key to 'Players'
+                ('player', models.ForeignKey(on_delete=models.CASCADE, to='fantasy_trades_app.Players')),  # Foreign key to 'Players' (use 'player')
             ],
         ),
-        # Add a unique constraint for player_id and date in 'player_values'
+        # Add a unique constraint for player and date in 'player_values'
         migrations.AlterUniqueTogether(
             name='PlayerValues',
-            unique_together={('player_id', 'date')},
+            unique_together={('player', 'date')},
         ),
     ]

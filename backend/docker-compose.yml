@@ -11,22 +11,24 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    restart: always
+#    restart: always
 
   web:
     container_name: fantasy_trades_app
     build: .
-    command: >
-      sh -c "
-      python manage.py migrate &&
-      python manage.py runserver 0.0.0.0:8000"
+#    command: >
+#      sh -c "
+#      python manage.py migrate &&
+#      python manage.py runserver 0.0.0.0:8000"
     volumes:
-      - .:/app
+      - ./player_data:/app/player_data
     ports:
       - "8000:8000"
-    restart: always
+#    restart: always
     depends_on:
       - db
+    env_file:
+      - .env
     environment:
       DJANGO_DB_HOST: db
       DJANGO_DB_NAME: fantasy_trades_db

@@ -26,6 +26,11 @@
 - `docker-compose build --no-cache`
 - `docker exec -it fantasy_trades_app /bin/bash`
 
+##### Migration Commands
+- `python manage.py showmigrations`
+- `python manage.py makemigrations`
+- `python manage.py migrate`
+
 ---
 
 #### Tip

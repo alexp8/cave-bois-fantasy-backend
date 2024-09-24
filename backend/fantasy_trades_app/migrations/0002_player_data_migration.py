@@ -1,18 +1,30 @@
 import csv
 from pathlib import Path
 from django.db import migrations
+import logging
 
+# Set up custom logger
+logger = logging.getLogger('migration_logger')
+file_handler = logging.FileHandler('0002_player_data_migration.log')
+file_handler.setLevel(logging.INFO)
+logger.addHandler(file_handler)
 
 # Helper function to insert player and player_values
 def insert_player_data(apps, schema_editor):
+    logger.info("STARTING 0002_player_data_migration")
+    print('test')
+
     players_model = apps.get_model('fantasy_trades_app', 'Players')
     player_values_model = apps.get_model('fantasy_trades_app', 'PlayerValues')
 
     # Define the directory where your CSV files are located
-    csv_directory = Path(__file__).parent.parent / 'players_data'
+    csv_directory = Path(__file__).resolve().parent.parent.parent / 'players_data'
+
+    logger.info(csv_directory.absolute())
 
     # Iterate over all CSV files in the directory
     for csv_file in csv_directory.glob('*.csv'):
+        logger.info(csv_file)
 
         filename = csv_file.stem
         player_name, player_id = filename.split('-')
