@@ -163,7 +163,7 @@ LOGGING = {
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'migration_logs.log'),
+            'filename': os.path.join(BASE_DIR, 'logs.log'),
         },
     },
     'loggers': {

@@ -1,5 +1,10 @@
+import logging
+
 import requests
 from django.conf import settings
+
+# Use the logger from the global settings
+logger = logging.getLogger('django')
 
 def fetch_data_from_sleeper_api(endpoint):
     """
