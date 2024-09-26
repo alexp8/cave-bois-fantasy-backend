@@ -133,7 +133,7 @@ def get_league_trades(request, sleeper_league_id):
                 # store transaction json data of previous years
                 if league_id != sleeper_league_id:
                     with open(file_path, 'w') as json_file:
-                        json.dump(transactions_data, json_file, indent=4)
+                        json.dump(transactions_data, json_file, indent=4) # TODO store in DB?
 
             all_transactions.append(transactions_data)
 
