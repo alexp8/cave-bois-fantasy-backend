@@ -1,7 +1,8 @@
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
-from sleeper_api.sleeper_api_svc import fetch_data_from_sleeper_api
+from sleeper_api.sleeper_api_svc import get_players, get_transactions, get_league
 import json
+import os
 
 PLAYERS_JSON_FILE = 'sleeper_api/sleeper_data/get_players.json'
 DRAFT_PICKS_JSON_FILE = 'sleeper_api/sleeper_data/draft_picks.json'
@@ -34,7 +35,7 @@ def get_players_from_sleeper(request):
     force_refresh = request.GET.get('force_refresh', 'False').lower() == 'true'
 
     if force_refresh is True:
-        players_data = fetch_data_from_sleeper_api("players/nfl")
+        players_data = get_players
         with open(PLAYERS_JSON_FILE, 'w') as json_file:
             json.dump(players_data, json_file, indent=4)
     else:
@@ -94,5 +95,46 @@ def get_players_from_sleeper_like(request, search_str):
 
     # TODO a smart filter that puts most 'relevant' players on top
 
-    # TODO a smart filter that returns only offensive players
+@api_view(['GET'])
+def get_league_trades(request, sleeper_league_id):
 
+    all_transactions = []
+    all_league_ids = [sleeper_league_id]
+
+    # get previous_league_ids
+    previous_league_id = None
+    while True:
+        if previous_league_id:
+            league_data = get_league(previous_league_id)
+        else:
+            league_data = get_league(sleeper_league_id)
+
+        previous_league_id = league_data['previous_league_id']
+        if not previous_league_id:
+            break
+        all_league_ids.append(previous_league_id)
+
+    # get trades from entire league history
+    for league_id in all_league_ids:
+        for i in range(21):
+
+            # store previous years trade data, to prevent unnecessary API calls
+            transactions_data = None
+            file_path = f'sleeper_data/{league_id}_league_data.json'
+            if league_id != sleeper_league_id and os.path.exists(file_path):
+                transactions_data = load_json(file_path)
+            else:
+                transactions_data = get_transactions("players/nfl", league_id)
+                transactions_data = [item for item in transactions_data if item.get('type') == 'trade' and item.get('status') == 'complete']
+
+                if not transactions_data or len(transactions_data) == 0:
+                    continue
+
+                # store transaction json data of previous years
+                if league_id != sleeper_league_id:
+                    with open(file_path, 'w') as json_file:
+                        json.dump(transactions_data, json_file, indent=4)
+
+            all_transactions.append(transactions_data)
+
+    return all_transactions

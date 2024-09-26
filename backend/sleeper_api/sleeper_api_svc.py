@@ -16,7 +16,7 @@ def fetch_data_from_sleeper_api(endpoint):
         return response.json()
     else:
         print(str(response))
-        return {"error": str("Failed getting data")}
+        raise Exception("Failed getting data")
 
 def get_transactions(league_id, round):
     endpoint = f"league/{league_id}/transactions/{round}"
@@ -25,9 +25,15 @@ def get_transactions(league_id, round):
 def get_users(league_id):
     return fetch_data_from_sleeper_api(f"league/{league_id}/users")
 
+def get_players():
+    return fetch_data_from_sleeper_api(f"players/nfl")
+
 def get_rosters(league_id):
     return fetch_data_from_sleeper_api(f"league/{league_id}/rosters")
 
 def get_matchups(league_id, week):
     return fetch_data_from_sleeper_api(f"league/{league_id}/transactions/{week}")
+
+def get_league(league_id):
+    return fetch_data_from_sleeper_api(f"league/{league_id}")
 
