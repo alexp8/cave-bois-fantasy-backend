@@ -16,12 +16,12 @@ class Players(models.Model):
 
 
 class KtcPlayerValues(models.Model):
-    ktc_player_id = models.ForeignKey(Players, to_field='ktc_player_id', on_delete=models.CASCADE)
-    ktc_value = models.IntegerField()
-    date = models.DateField()
+    ktc_player_id = models.ForeignKey(Players, to_field='ktc_player_id', on_delete=models.CASCADE, db_column='ktc_player_id')
+    ktc_value = models.IntegerField(db_column='ktc_value')
+    date = models.DateField(db_column='date')
 
     class Meta:
-        unique_together = (('player', 'date'),)
+        unique_together = (('ktc_player_id', 'date'),)
 
     def __str__(self):
         return f"{self.player} - {self.ktc_value} on {self.date}"

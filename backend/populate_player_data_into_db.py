@@ -23,6 +23,12 @@ file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
 
+# Function to cleanse player name
+def cleanse_player_name(name):
+    # Remove all non-alphanumeric characters (including spaces) and convert to lowercase
+    return re.sub(r'[^a-zA-Z]', '', name).lower()
+
+
 # Data population function
 def populate_data():
     logger.info("Starting player data population")
@@ -33,7 +39,7 @@ def populate_data():
     sleeper_players_data = load_json('/app/migration_data/sleeper_data/get_players.json')
     sleeper_players_data = [
         {
-            "name": item["first_name"] + " " + item["last_name"],
+            "name": item['full_name'],
             "age": item["age"],
             "sleeper_player_id": item["player_id"],
             "experience": item["years_exp"],  # Double-check if 'years_exp' is correct in the source
@@ -63,14 +69,14 @@ def populate_data():
                 ktc_player_id = row['ID']
                 if ktc_player_id == 'ID':
                     continue
-                player_name_cleansed = re.sub(r'\W+', '', player_name)
+                player_name_cleansed = cleanse_player_name(player_name)
                 ktc_player_id = int(ktc_player_id)
 
                 # Match sleeper player data
                 if sleeper_player_data is None and row_num <= 2:
                     sleeper_player_data = next(
                         (sleeper_player for sleeper_player in sleeper_players_data
-                         if player_name_cleansed.lower() == re.sub(r'\W+', '', sleeper_player['name']).lower()),
+                         if player_name_cleansed == cleanse_player_name(sleeper_player['name'])),
                         None
                     )
 
@@ -97,16 +103,12 @@ def populate_data():
                         'team': sleeper_player_data['team']
                     }
                 )
-                logger.info(f"Player created: {player} (created: {created})")
 
-                KtcPlayerValues.objects.create(
-                    player=player,
+                KtcPlayerValues.objects.get_or_create(
+                    ktc_player_id=player,
                     ktc_value=row['VALUE'],
                     date=row['DATE']
                 )
-                logger.info(f"Inserted player value for {player_name} on {row['DATE']}")
-
-        break
 
 
 if __name__ == '__main__':
