@@ -168,13 +168,13 @@ LOGGING = {
     },
     'loggers': {
         'django.db.backends': {  # Log database queries
-            'level': 'DEBUG',
+            'level': 'INFO',
             'handlers': ['file'],
             'propagate': False,
         },
         'django': {  # Log Django migrations and other events
             'handlers': ['file'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': True,
         },
     },

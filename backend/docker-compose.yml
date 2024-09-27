@@ -18,7 +18,8 @@ services:
     build: .
     volumes:
       - .:/app
-      - ../player_data:/app/player_data
+      - ../migration_data/ktc_player_data:/app/migration_data/ktc_player_data
+      - ../migration_data/sleeper_data:/app/migration_data/sleeper_data
     ports:
       - "8000:8000"
 #    restart: always

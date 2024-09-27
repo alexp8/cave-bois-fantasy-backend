@@ -7,7 +7,7 @@ where id = 19
 
 SELECT * FROM public.fantasy_trades_app_players;
 
-SELECT * FROM public.fantasy_trades_app_playervalues
+SELECT * FROM public.fantasy_trades_app_ktcplayervalues
 ORDER BY id ASC;
 
 
