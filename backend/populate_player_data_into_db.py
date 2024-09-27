@@ -50,30 +50,39 @@ def populate_data():
             "sport": item["sport"]
         }
         for item in sleeper_players_data.values()
-        if 'status' in item and 'active' == item['status'] and 'sport' in item and 'nfl' == item['sport']
+        if 'status' in item and 'active' == str(item['status']).lower() and 'sport' in item and 'nfl' == str(item['sport']).lower()
     ]
+
+    logger.info(f'sleeper data count = {len(sleeper_players_data)}')
 
     # Iterate over all CSV files in the directory
     for csv_file in csv_directory.glob('*.csv'):
+
+
+        if 'mahomes' not in csv_file.name.lower():
+            continue
+
         logger.info(f"Processing file: {csv_file}")
 
         # Read the CSV and insert player values
         with open(csv_file, newline='') as csvfile:
+
             reader = csv.DictReader(csvfile)
             sleeper_player_data = None
-            row_num = 0
             for row in reader:
 
-                row_num = row_num + 1
+                logger.info(f'row: {row}')
                 player_name = row['NAME']
                 ktc_player_id = row['ID']
-                if ktc_player_id == 'ID':
-                    continue
                 player_name_cleansed = cleanse_player_name(player_name)
                 ktc_player_id = int(ktc_player_id)
 
+                logger.info(f"ktc player_name_cleansed: '{player_name_cleansed}'")
+
+                logger.info(f'sleeper_player_data: {sleeper_player_data}')
+
                 # Match sleeper player data
-                if sleeper_player_data is None and row_num <= 2:
+                if sleeper_player_data is None:
                     sleeper_player_data = next(
                         (sleeper_player for sleeper_player in sleeper_players_data
                          if player_name_cleansed == cleanse_player_name(sleeper_player['name'])),
@@ -109,6 +118,8 @@ def populate_data():
                     ktc_value=row['VALUE'],
                     date=row['DATE']
                 )
+
+                logger.info('')
 
 
 if __name__ == '__main__':
