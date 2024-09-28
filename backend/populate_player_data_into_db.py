@@ -42,25 +42,20 @@ def populate_data():
             "name": item['full_name'],
             "age": item["age"],
             "sleeper_player_id": item["player_id"],
-            "experience": item["years_exp"],  # Double-check if 'years_exp' is correct in the source
+            "experience": item["years_exp"],
             "position": item["position"],
             "number": item["number"],
             "team": item["team"],
-            "status": item["status"],
             "sport": item["sport"]
         }
         for item in sleeper_players_data.values()
-        if 'status' in item and 'active' == str(item['status']).lower() and 'sport' in item and 'nfl' == str(item['sport']).lower()
+        if 'active' in item and item['active'] is True and 'sport' in item and 'nfl' == str(item['sport']).lower()
     ]
 
     logger.info(f'sleeper data count = {len(sleeper_players_data)}')
 
     # Iterate over all CSV files in the directory
     for csv_file in csv_directory.glob('*.csv'):
-
-
-        if 'mahomes' not in csv_file.name.lower():
-            continue
 
         logger.info(f"Processing file: {csv_file}")
 
@@ -71,21 +66,24 @@ def populate_data():
             sleeper_player_data = None
             for row in reader:
 
-                logger.info(f'row: {row}')
+                # logger.info(f'row: {row}')
                 player_name = row['NAME']
                 ktc_player_id = row['ID']
                 player_name_cleansed = cleanse_player_name(player_name)
                 ktc_player_id = int(ktc_player_id)
 
-                logger.info(f"ktc player_name_cleansed: '{player_name_cleansed}'")
+                # logger.info(f"ktc player_name_cleansed: '{player_name_cleansed}'")
 
-                logger.info(f'sleeper_player_data: {sleeper_player_data}')
+                # logger.info(f'sleeper_player_data: {sleeper_player_data}')
 
                 # Match sleeper player data
                 if sleeper_player_data is None:
                     sleeper_player_data = next(
                         (sleeper_player for sleeper_player in sleeper_players_data
-                         if player_name_cleansed == cleanse_player_name(sleeper_player['name'])),
+                         if player_name_cleansed == cleanse_player_name(sleeper_player['name'])
+                         or player_name_cleansed in cleanse_player_name(sleeper_player['name'])
+                         or cleanse_player_name(sleeper_player['name']) in player_name_cleansed
+                         ),
                         None
                     )
 
@@ -118,8 +116,6 @@ def populate_data():
                     ktc_value=row['VALUE'],
                     date=row['DATE']
                 )
-
-                logger.info('')
 
 
 if __name__ == '__main__':
