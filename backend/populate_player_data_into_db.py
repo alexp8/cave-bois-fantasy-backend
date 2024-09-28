@@ -39,17 +39,22 @@ def populate_data():
     sleeper_players_data = load_json('/app/migration_data/sleeper_data/get_players.json')
     sleeper_players_data = [
         {
-            "name": item['full_name'],
-            "age": item["age"],
-            "sleeper_player_id": item["player_id"],
-            "experience": item["years_exp"],
-            "position": item["position"],
-            "number": item["number"],
-            "team": item["team"],
-            "sport": item["sport"]
+            "name": item.get('full_name', 'Unknown'),
+            "age": item.get('age', None),
+            "sleeper_player_id": item.get('player_id', None),
+            "experience": item.get('years_exp', None),
+            "position": item.get('position', None),
+            "number": item.get('number', None),
+            "team": item.get('team', None),
+            "sport": item.get('sport', None),
         }
         for item in sleeper_players_data.values()
-        if 'active' in item and item['active'] is True and 'sport' in item and 'nfl' == str(item['sport']).lower()
+        if item['name'] != 'Unknown'
+           and item['sleeper_player_id']
+           and 'active' in item
+           and item['active'] is True
+           and 'sport' in item
+           and 'nfl' == str(item['sport']).lower()
     ]
 
     logger.info(f'sleeper data count = {len(sleeper_players_data)}')
