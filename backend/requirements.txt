@@ -4,3 +4,4 @@ django-cors-headers
 djangorestframework
 requests
 python-dotenv
+rapidfuzz
