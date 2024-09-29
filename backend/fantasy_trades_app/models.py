@@ -2,7 +2,8 @@ from django.db import models
 
 
 class Players(models.Model):
-    ktc_player_id = models.IntegerField(primary_key=True)
+    id = models.AutoField(primary_key=True)
+    ktc_player_id = models.IntegerField(null=True, blank=True, unique=True)
     player_name = models.CharField(max_length=255)
     sleeper_player_id = models.IntegerField(null=True, blank=True)
     age = models.IntegerField(null=True, blank=True)
@@ -26,7 +27,8 @@ class KtcPlayerValues(models.Model):
     date = models.DateField(db_column='date')
 
     class Meta:
-        unique_together = (('ktc_player_id', 'date'),)
+        unique_together = ('ktc_player_id', 'date')
 
     def __str__(self):
-        return f"{self.player} - {self.ktc_value} on {self.date}"
+        return f"{self.ktc_player_id.player_name} - {self.ktc_value} on {self.date}"
+

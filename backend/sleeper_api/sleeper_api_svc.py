@@ -20,8 +20,8 @@ def fetch_data_from_sleeper_api(endpoint):
     if response.status_code == 200:
         return response.json()
     else:
-        print(str(response))
-        raise Exception("Failed getting data")
+        logger.error(str(response))
+        raise Exception(f"Failed getting data: {str(response)}")
 
 def get_transactions(league_id, round):
     endpoint = f"league/{league_id}/transactions/{round}"

@@ -1,10 +1,12 @@
-import os
-import django
 import csv
-from pathlib import Path
 import logging
+import os
 import re
-from rapidfuzz import fuzz, process
+from pathlib import Path
+
+import django
+from rapidfuzz import process
+
 from util import load_json
 
 # Set up Django environment
@@ -44,17 +46,18 @@ def cleanse_player_name(name):
 
 def find_best_match(ktc_player_name, sleeper_players_data):
 
-    ktc_player_name_cleansed = cleanse_player_name(ktc_player_name)
-
+    # grab every player's name
     sleeper_names = [cleanse_player_name(player['name']) for player in sleeper_players_data]
 
-    best_match = process.extractOne(ktc_player_name_cleansed, sleeper_names, score_cutoff=80)
+    # perform fuzzy search and find best match between sleeper player name and ktc player name
+    best_match = process.extractOne(cleanse_player_name(ktc_player_name), sleeper_names, score_cutoff=80)
 
     if best_match is None:
         return None
 
     best_match_name, score, index = best_match
 
+    # use the best_name to get the sleeper_player
     return next(
         (sleeper_player for sleeper_player in sleeper_players_data
          if cleanse_player_name(sleeper_player['name']) == best_match_name),
@@ -156,6 +159,27 @@ def populate_data():
                     date=row['DATE']
                 )
 
+
+    # populate remaining sleeper data
+    logger.info("Migrating remaining sleeper players (players without KTC values)")
+
+    for player in sleeper_players_data_filtered:
+        existing_player = Players.objects.filter(sleeper_player_id=player['sleeper_player_id']).first()
+
+        if existing_player is None:
+            Players.objects.create(
+                ktc_player_id=None,
+                player_name=player['name'],
+                age=player['age'],
+                sleeper_player_id=player['sleeper_player_id'],
+                experience=player['experience'],
+                number=player['number'],
+                position=player['position'],
+                team=player['team']
+            )
+
+    logger.info(f"{Players.objects.count()} players created")
+    logger.info(f"{KtcPlayerValues.objects.count()} ktc player values created")
 
 if __name__ == '__main__':
     try:

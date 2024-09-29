@@ -11,7 +11,7 @@ where sleeper_player_id = 8151;
 
 -- player name
 SELECT * FROM public.fantasy_trades_app_players
-where lower(player_name) like '%walker%';
+where lower(player_name) like '%fournette%';
 
 -- players missing sleeper info
 SELECT * FROM public.fantasy_trades_app_players
