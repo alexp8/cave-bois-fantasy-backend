@@ -112,13 +112,23 @@ def get_league_trades(request, sleeper_league_id):
             if player is None:
                 raise Exception(f"Failed to find player with player_id '{key_player_id}'")
 
-            # player_info = {
-            #     'player_id': key_player_id,
-            #     'player_name': player['player_name'] if player else None,
-            #     'roster_id': value_roster_id,
-            #     'user_name': user['user_name'],
-            #     'avatar_url': user['avatar_url'],
-            #     'user_id': user['user_id']
+            # Initialize the roster_id entry in trade_obj if it doesn't exist
+            if value_roster_id not in trade_obj:
+                trade_obj[value_roster_id] = {
+                    'total_value': 0,  # TODO logic to calculate this
+                    'user_name': user['user_name'],
+                    'avatar_url': user['avatar_url'],
+                    'user_id': user['user_id'],
+                    'roster_id': value_roster_id,
+                    'players': []
+                }
+
+            # Add player details to the 'players' list
+            trade_obj[value_roster_id]['players'].append({
+                'player_id': key_player_id,
+                'player_name': player['player_name'],
+                'value_when_traded': None, #TODO
+                'value_now': None # TODO
                 # 'value_when_traded': KtcPlayerValues.objects.filter(
                 #     ktc_player_id__sleeper_player_id=player['sleeper_player_id'],
                 #     date=datetime.fromtimestamp(trade['created'] / 1000).strftime('%Y-%m-%d')
@@ -127,23 +137,6 @@ def get_league_trades(request, sleeper_league_id):
                 #     ktc_player_id__sleeper_player_id=player['sleeper_player_id'],
                 #     date=datetime.now().strftime('%Y-%m-%d')
                 # ).first()
-            # }
-
-            # Initialize the roster_id entry in trade_obj if it doesn't exist
-            if value_roster_id not in trade_obj:
-                trade_obj[value_roster_id] = {
-                    'total_value': 0,  # You'll need logic to calculate this
-                    'players': []
-                }
-
-            # Add player details to the 'players' list
-            trade_obj[value_roster_id]['players'].append({
-                'player_id': key_player_id,
-                'player_name': player['player_name'],
-                'roster_id': value_roster_id,
-                'user_name': user['user_name'],
-                'avatar_url': user['avatar_url'],
-                'user_id': user['user_id']
             })
 
             # Logic to calculate the 'total_value' per roster (e.g., based on KTC values)
@@ -193,6 +186,7 @@ def get_league_trades(request, sleeper_league_id):
     }
 
     return JsonResponse(response, safe=False)
+
 
 def calculate_player_value(player_id):
     # Example logic to get a player's trade value
