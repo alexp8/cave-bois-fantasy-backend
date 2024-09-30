@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from rest_framework.decorators import api_view
 
-from fantasy_trades_app.models import Players
+from fantasy_trades_app.models import Players, KtcPlayerValues
 from logger_util import logger
 from sleeper_api.sleeper_api_svc import get_transactions, get_league, get_users, get_rosters
 
@@ -23,13 +23,12 @@ def get_players_from_sleeper_like(request, search_str):
 
 @api_view(['GET'])
 def get_league_trades(request, sleeper_league_id):
-
     league_users = get_users(sleeper_league_id)
     league_rosters = get_rosters(sleeper_league_id)
 
     # Merge roster id with users and create a lookup dictionary
-    league_users_dict = {
-        user['user_id']: {
+    league_users = [
+        {
             'user_id': user['user_id'],
             'user_name': user['display_name'],
             'avatar_url': user['metadata'].get('avatar', None),
@@ -39,7 +38,7 @@ def get_league_trades(request, sleeper_league_id):
             )
         }
         for user in league_users
-    }
+    ]
 
     # Get previous_league_ids
     previous_leagues = []
@@ -58,7 +57,8 @@ def get_league_trades(request, sleeper_league_id):
             }
         )
 
-    logger.info(f"Getting transactions from sleeper league: id={sleeper_league_id} name={league_data['name']}, league_history_count={len(previous_leagues)}")
+    logger.info(
+        f"Getting transactions from sleeper league: id={sleeper_league_id} name={league_data['name']}, league_history_count={len(previous_leagues)}")
 
     # Get trades from current league history
     all_trades = []
@@ -70,8 +70,7 @@ def get_league_trades(request, sleeper_league_id):
                 'created_at_formatted': datetime.fromtimestamp(item['created'] / 1000).strftime('%b %d %Y'),
                 'draft_picks': item['draft_picks'],
                 'adds': item['adds'],
-                'consenter_ids': item['consenter_ids'],
-                'drops': item['drops'],
+                # 'consenter_ids': item['consenter_ids'],
                 'roster_ids': item['roster_ids'],
                 'transaction_id': item['transaction_id'],
                 'week': item['leg']  # week
@@ -89,51 +88,78 @@ def get_league_trades(request, sleeper_league_id):
 
     logger.info(f"Found {len(all_trades)} trades")
 
-    # Get all player IDs from the trades (adds and drops) in a single query
+    # Get all player IDs from the trades (adds) in a single query
     player_ids = set()
     for trade in all_trades:
         player_ids.update(trade['adds'].keys())
-        player_ids.update(trade['drops'].keys())
 
     # Fetch all players at once, using only the necessary fields
     players = Players.objects.filter(sleeper_player_id__in=player_ids).values('sleeper_player_id', 'player_name')
     player_dict = {player['sleeper_player_id']: player for player in players}
+    logger.info(f'player_ids: {player_dict.keys()}')
 
     updated_trades = []
     for trade in all_trades:
-        # Handle 'adds' with a single player and user lookup
-        updated_adds = []
+
+        trade_obj = {}
         for key_player_id, value_roster_id in trade['adds'].items():
-            player = player_dict.get(key_player_id, None)
-            user = league_users_dict.get(value_roster_id, None)
+            player = player_dict.get(int(key_player_id))
+            user = next((user for user in league_users if user['roster_id'] == value_roster_id), None)
 
-            updated_adds.append({
+            if user is None:
+                raise Exception(f'Failed to find user with roster_id {value_roster_id}')
+
+            if player is None:
+                raise Exception(f"Failed to find player with player_id '{key_player_id}'")
+
+            # player_info = {
+            #     'player_id': key_player_id,
+            #     'player_name': player['player_name'] if player else None,
+            #     'roster_id': value_roster_id,
+            #     'user_name': user['user_name'],
+            #     'avatar_url': user['avatar_url'],
+            #     'user_id': user['user_id']
+                # 'value_when_traded': KtcPlayerValues.objects.filter(
+                #     ktc_player_id__sleeper_player_id=player['sleeper_player_id'],
+                #     date=datetime.fromtimestamp(trade['created'] / 1000).strftime('%Y-%m-%d')
+                # ).first(),
+                # 'value_now': KtcPlayerValues.objects.filter(
+                #     ktc_player_id__sleeper_player_id=player['sleeper_player_id'],
+                #     date=datetime.now().strftime('%Y-%m-%d')
+                # ).first()
+            # }
+
+            # Initialize the roster_id entry in trade_obj if it doesn't exist
+            if value_roster_id not in trade_obj:
+                trade_obj[value_roster_id] = {
+                    'total_value': 0,  # You'll need logic to calculate this
+                    'players': []
+                }
+
+            # Add player details to the 'players' list
+            trade_obj[value_roster_id]['players'].append({
                 'player_id': key_player_id,
-                'player_name': player['player_name'] if player else None,
+                'player_name': player['player_name'],
                 'roster_id': value_roster_id,
-                'user_name': user['user_name'] if user else None,
-                'avatar_url': user['avatar_url'] if user else None,
-                'user_id': user['user_id'] if user else None,
+                'user_name': user['user_name'],
+                'avatar_url': user['avatar_url'],
+                'user_id': user['user_id']
             })
 
-        # Handle 'drops' with a single player and user lookup
-        updated_drops = []
-        for key_player_id, value_roster_id in trade['drops'].items():
-            player = player_dict.get(key_player_id, None)
-            user = league_users_dict.get(value_roster_id, None)
+            # Logic to calculate the 'total_value' per roster (e.g., based on KTC values)
+            # trade_obj[value_roster_id]['total_value'] += calculate_player_value(key_player_id)
+            trade_obj[value_roster_id]['total_value'] += 0
 
-            updated_drops.append({
-                'player_id': key_player_id,
-                'player_name': player['player_name'] if player else None,
-                'roster_id': value_roster_id,
-                'user_name': user['user_name'] if user else None,
-                'avatar_url': user['avatar_url'] if user else None,
-                'user_id': user['user_id'] if user else None,
-            })
+            # Add the trade metadata
+        trade_obj.update({
+            'created_at_millis': trade['created_at_millis'],
+            'created_at_formatted': trade['created_at_formatted'],
+            'transaction_id': trade['transaction_id'],
+            'roster_ids': trade['roster_ids'],
+            'week': trade['week']
+        })
 
-        trade['adds'] = updated_adds
-        trade['drops'] = updated_drops
-        updated_trades.append(trade)
+        updated_trades.append(trade_obj)
 
     # Paginate the result
     page = request.GET.get('page', 1)
@@ -167,3 +193,11 @@ def get_league_trades(request, sleeper_league_id):
     }
 
     return JsonResponse(response, safe=False)
+
+def calculate_player_value(player_id):
+    # Example logic to get a player's trade value
+    ktc_value = KtcPlayerValues.objects.filter(
+        ktc_player_id__sleeper_player_id=player_id,
+        date="2023-01-01"  # Example date, adjust as necessary
+    ).first()
+    return ktc_value.ktc_value if ktc_value else 0
