@@ -42,3 +42,5 @@ def get_matchups(league_id, week):
 def get_league(league_id):
     return fetch_data_from_sleeper_api(f"league/{league_id}")
 
+def get_draft(league_id):
+    return fetch_data_from_sleeper_api(f"league/{league_id}/drafts")
