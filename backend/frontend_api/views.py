@@ -104,6 +104,7 @@ def get_league_trades(request, sleeper_league_id):
                 'adds': item['adds'],
                 'roster_ids': item['roster_ids'],
                 'transaction_id': item['transaction_id'],
+                'waiver_budget': item['waiver_budget'],
                 'week': item['leg']  # week
             }
             for item in trade_response
@@ -144,9 +145,15 @@ def get_league_trades(request, sleeper_league_id):
                 'avatar_url': user['avatar_url'],
                 'user_id': user['user_id'],
                 'roster_id': roster_id,
+                'fab': 0,
                 'players': [],
                 'draft_picks': []
             }
+
+        # get any fab
+        for waiver_budget in trade['waiver_budget']:
+            trade_obj[waiver_budget['receiver']]['fab'] += waiver_budget['amount']
+            trade_obj[waiver_budget['sender']]['fab'] -= waiver_budget['amount']
 
         # grab values from draft picks
         for draft_pick in trade['draft_picks']:
