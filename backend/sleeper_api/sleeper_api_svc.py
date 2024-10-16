@@ -20,7 +20,7 @@ def fetch_data_from_sleeper_api(endpoint):
     if response.status_code == 200:
         return response.json()
     else:
-        logger.error(str(response))
+        logger.error(f"Failed hitting API '{endpoint}'\nResponse={str(response)}")
         raise Exception(f"Failed getting data: {str(response)}")
 
 def get_transactions(league_id, round):

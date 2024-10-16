@@ -15,6 +15,7 @@ services:
 
   web:
     container_name: fantasy_trades_app
+    image: fantasy_trades_app_django
     build: .
     volumes:
       - .:/app
