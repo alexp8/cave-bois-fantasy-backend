@@ -1,13 +1,16 @@
 import json
 from datetime import datetime
 
-from django.http import JsonResponse
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from django.http import JsonResponse
 from rest_framework.decorators import api_view
 
 from fantasy_trades_app.models import Players, KtcPlayerValues
+from frontend_api.cache.get_draft_data import get_draft_data
+from frontend_api.cache.get_league_data import get_league_data
+from frontend_api.cache.get_league_users import get_league_users_data
+from frontend_api.cache.get_transactions_data import get_transactions_data
 from logger_util import logger
-from sleeper_api.sleeper_api_svc import get_transactions, get_league, get_users, get_rosters, get_draft
 
 
 @api_view(['GET'])
@@ -52,20 +55,20 @@ def number_with_suffix(val):
 @api_view(['GET'])
 def get_league_trades(request, sleeper_league_id):
 
-    # get sleeper league data
-    league_data: json = get_league(sleeper_league_id)
+    # Get the rosterId from the query string, if provided
+    roster_id = request.GET.get('rosterId', None)
 
-    if not league_data:
-        raise Exception(f"No data found for sleeper_league_id {sleeper_league_id}")
+    # get sleeper league data
+    league_data: json = get_league_data(sleeper_league_id)
 
     # fetch league_users
-    league_users: list = fetch_league_users(sleeper_league_id)
+    league_users: list = get_league_users_data(sleeper_league_id)
 
     # Get previous_league_ids
     previous_leagues: list = get_previous_league_ids(league_data)
 
     # get draft data
-    draft_response = get_draft(sleeper_league_id)[0]
+    draft_response = get_draft_data(sleeper_league_id)[0]
     draft_order = {
         f"{draft_response['season']}_{key}": value
         for key, value in draft_response['draft_order'].items()
@@ -73,7 +76,7 @@ def get_league_trades(request, sleeper_league_id):
 
     # get previous drafts data
     for previous_league in previous_leagues:
-        draft_response = get_draft(previous_league['previous_league_id'])[0]
+        draft_response = get_draft_data(previous_league['previous_league_id'])[0]
         draft_order.update({
             f"{draft_response['season']}_{key}": value
             for key, value in draft_response['draft_order'].items()
@@ -87,11 +90,11 @@ def get_league_trades(request, sleeper_league_id):
     )
 
     # Get trades from current league history
-    all_trades: dict = fetch_trade_data(sleeper_league_id)
+    all_trades: dict = get_transactions_data(sleeper_league_id)
 
     for previous_league in previous_leagues:
         logger.info(f"Fetching trades for previous league: {previous_league['previous_league_id']}")
-        all_trades.update(fetch_trade_data(previous_league['previous_league_id']))
+        all_trades.update(get_transactions_data(previous_league['previous_league_id']))
 
     # Get all player IDs from the trades (adds) in a single query
     player_ids = set()
@@ -110,6 +113,10 @@ def get_league_trades(request, sleeper_league_id):
         for trade in trades:
 
             trade_obj = {}
+
+            # filter out rosters
+            if roster_id is not None and roster_id not in trade['roster_ids']:
+                continue
 
             # Initialize the roster_id entry in trade_obj
             for roster_id in trade['roster_ids']:
@@ -283,42 +290,6 @@ def paginate_response(previous_leagues, request, updated_trades, league_name, le
     }
 
 
-def fetch_trade_data(sleeper_league_id):
-    all_trades: dict = {}
-    trades_list: list = []
-
-    for week in range(21):
-        # fetch trades from sleeper
-        trade_response: json = get_transactions(sleeper_league_id, week)
-        trade_response = [
-            {
-                'created_at_millis': item['status_updated'],
-                'created_at_formatted': datetime.fromtimestamp(item['status_updated'] / 1000).strftime('%b %d %Y'),
-                'draft_picks': item['draft_picks'],
-                'adds': item['adds'],
-                'roster_ids': item['roster_ids'],
-                'transaction_id': item['transaction_id'],
-                'waiver_budget': item['waiver_budget'],
-                'week': item['leg']  # week
-            }
-            for item in trade_response
-            if item.get('type') == 'trade'
-               and item.get('status') == 'complete'
-               and item.get('adds') is not None
-        ]
-
-        if not trade_response or len(trade_response) == 0:
-            continue
-
-        trades_list.extend(trade_response)
-
-    if trades_list:
-        all_trades[sleeper_league_id] = trades_list
-
-    logger.info(f"Found {len(trades_list)} trades for league ID {sleeper_league_id}")
-    return all_trades
-
-
 def get_previous_league_ids(league_data):
     previous_leagues: list = []
 
@@ -327,7 +298,7 @@ def get_previous_league_ids(league_data):
         if not previous_league_id or previous_league_id == "0":
             break
 
-        league_data: json = get_league(previous_league_id)
+        league_data: json = get_league_data(previous_league_id)
         previous_leagues.append(
             {
                 'previous_league_id': previous_league_id,
@@ -336,22 +307,3 @@ def get_previous_league_ids(league_data):
         )
     return previous_leagues
 
-
-def fetch_league_users(sleeper_league_id):
-    league_users: json = get_users(sleeper_league_id)
-    league_rosters: json = get_rosters(sleeper_league_id)
-
-    # Merge roster id with users and create a lookup dictionary
-    league_users: list = [
-        {
-            'user_id': user['user_id'],
-            'user_name': user['display_name'],
-            'avatar_url': user['metadata'].get('avatar', None),
-            'roster_id': next(
-                (roster['roster_id'] for roster in league_rosters if roster['owner_id'] == user['user_id']),
-                None
-            )
-        }
-        for user in league_users
-    ]
-    return league_users
