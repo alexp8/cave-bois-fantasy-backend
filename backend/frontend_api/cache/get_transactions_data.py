@@ -31,7 +31,7 @@ def get_transactions_data(sleeper_league_id):
         league_transactions_data = cache.get(cache_key)
 
         if not league_transactions_data:
-            league_transactions_data = get_transactions(sleeper_league_id, week)
+            league_transactions_data = get_transactions(sleeper_league_id, week)  # query sleeper API
             league_transactions_data = [
                 transform_transaction_data(item)
                 for item in league_transactions_data
@@ -39,12 +39,10 @@ def get_transactions_data(sleeper_league_id):
                    and item.get('status') == 'complete'
                    and item.get('adds') is not None
             ]
-
-            if not league_transactions_data:
-                continue
-
             cache.set(cache_key, league_transactions_data, timeout=CACHE_DURATION)
 
+        if not league_transactions_data:
+            continue
         trades_list.extend(league_transactions_data)
 
     if trades_list:

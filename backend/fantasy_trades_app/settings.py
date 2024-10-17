@@ -186,3 +186,5 @@ CACHES = {
         'LOCATION': 'unique-snowflake',
     }
 }
+
+VERSION = '1.0.0'
