@@ -23,6 +23,9 @@ def get_version(request):
 @api_view(['GET'])
 def get_league_trades(request, sleeper_league_id):
 
-    roster_id = request.GET.get('rosterId', None)
+    try:
+        roster_id = request.GET.get('rosterId', None)
 
-    return get_trades_api.get_trades(request, sleeper_league_id, roster_id)
+        return get_trades_api.get_trades(request, sleeper_league_id, roster_id)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500, safe=False)

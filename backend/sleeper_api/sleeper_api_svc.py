@@ -1,10 +1,8 @@
-import logging
-
 import requests
 from django.conf import settings
 
-# Use the logger from the global settings
-logger = logging.getLogger('django')
+from logger_util import logger
+
 
 def fetch_data_from_sleeper_api(endpoint):
     """
@@ -15,13 +13,13 @@ def fetch_data_from_sleeper_api(endpoint):
     """
     url = f"{settings.SLEEPER_API_URL}/{endpoint}"
     headers = {"Accept" : "application/json"}
-    print(url)
+    logger.debug(url)
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         return response.json()
     else:
         logger.error(f"Failed hitting API '{endpoint}'\nResponse={str(response)}")
-        raise Exception(f"Failed getting data: {str(response)}")
+        raise Exception(f"Failed getting data for '{endpoint}': {str(response)}")
 
 def get_transactions(league_id, round):
     endpoint = f"league/{league_id}/transactions/{round}"
