@@ -12,7 +12,9 @@ from frontend_api.cache.get_transactions_data import get_transactions_data
 from logger_util import logger
 
 
-def get_trades(request, sleeper_league_id, roster_id):
+def get_trades(request, sleeper_league_id, roster_id = 'all'):
+    page = request.GET.get('page', 1)
+    logger.info(f"Getting league trades for league: {sleeper_league_id}, roster_id: {roster_id}, page: {page}")
 
     # get sleeper league data
     league_data: json = get_league_data(sleeper_league_id)
@@ -45,35 +47,39 @@ def get_trades(request, sleeper_league_id, roster_id):
         f" league_history_count={len(previous_leagues)}"
     )
 
-    # Get trades from current league history
+    # Get trades from current league
     all_trades: dict = get_transactions_data(sleeper_league_id)
+
+    # Get trades from previous leagues history
+    for previous_league in previous_leagues:
+        all_trades.update(get_transactions_data(previous_league['previous_league_id']))
 
     # Get all player IDs from the trades (adds) in a single query
     player_ids = set()
     for sleeper_league_id, trades in all_trades.items():
         for trade in trades:
+            if roster_id != 'all' and int(roster_id) not in trade['roster_ids']:
+                continue
             player_ids.update(trade['adds'].keys())
 
     # Fetch all players at once, using only the necessary fields
     players = Players.objects.filter(sleeper_player_id__in=player_ids).values('sleeper_player_id', 'player_name')
     player_dict = {player['sleeper_player_id']: player for player in players}
-    logger.info(f'player_ids: {player_dict.keys()}')
 
     # loop over trades and build response
     updated_trades = []
     for sleeper_league_id, trades in all_trades.items():
         for trade in trades:
 
-            trade_obj = {}
-
-            # filter out rosters
-            if roster_id is not None and roster_id not in trade['roster_ids']:
+            if roster_id != 'all' and int(roster_id) not in trade['roster_ids']:
                 continue
 
+            trade_obj = {'sleeper_league_id': sleeper_league_id}
+
             # Initialize the roster_id entry in trade_obj
-            for roster_id in trade['roster_ids']:
-                user = next((user for user in league_users if user['roster_id'] == roster_id), None)
-                trade_obj[roster_id] = init_roster_trade(roster_id, user)
+            for roster_id_temp in trade['roster_ids']:
+                user = next((user for user in league_users if user['roster_id'] == roster_id_temp), None)
+                trade_obj[roster_id_temp] = init_roster_trade(roster_id_temp, user)
 
             # get any fab
             for waiver_budget in trade['waiver_budget']:
@@ -110,7 +116,7 @@ def get_trades(request, sleeper_league_id, roster_id):
     updated_trades.sort(key=lambda trade: trade['created_at_millis'], reverse=True)
 
     # Paginate the result
-    response = paginate_response(previous_leagues, request, updated_trades, league_data['name'], league_data['season'])
+    response = paginate_response(previous_leagues, page, updated_trades, league_data, league_users, roster_id)
 
     return JsonResponse(response, safe=False)
 
@@ -210,9 +216,7 @@ def set_trade_winner(trade, trade_obj):
         trade_obj[roster_id]['won'] = (trade_obj[roster_id]['total_current_value'] == max_value)
 
 
-def paginate_response(previous_leagues, request, updated_trades, league_name, league_season):
-    page = request.GET.get('page', 1)
-    logger.info(f"Getting league trades page: {page}")
+def paginate_response(previous_leagues, page, updated_trades, league_data, league_users, roster_id):
     page_size = 20
     api_response = {
         'previous_league_ids': previous_leagues,
@@ -229,14 +233,19 @@ def paginate_response(previous_leagues, request, updated_trades, league_name, le
 
     # Prepare the paginated response
     return {
-        'league_name': league_name,
-        'league_season': league_season,
+        'league_id': league_data['league_id'],
+        'league_name': league_data['name'],
+        'league_season': league_data['season'],
+        'league_avatar': league_data['avatar'],
+        'roster_id': roster_id,
         'page': paginated_trades.number,
+        'page_size': page_size,
         'total_pages': paginator.num_pages,
         'total_trades': paginator.count,
         'has_next': paginated_trades.has_next(),
         'has_previous': paginated_trades.has_previous(),
-        'previous_league_ids': api_response['previous_league_ids'],  # Include previous league IDs
+        'previous_leagues': api_response['previous_league_ids'],  # Include previous league IDs
+        'league_users': league_users,
         'trades': list(paginated_trades.object_list)  # Paginated trades
     }
 
