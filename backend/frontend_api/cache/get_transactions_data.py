@@ -12,7 +12,8 @@ NUMBER_OF_WEEKS = 21
 def transform_transaction_data(item):
     return {
         'created_at_millis': item['status_updated'],
-        'created_at_formatted': datetime.fromtimestamp(item['status_updated'] / 1000).strftime('%b %d %Y'),
+        'created_at_yyyy_mm_dd': datetime.fromtimestamp(item['status_updated'] / 1000).strftime('%Y-%m-%d'),
+        'created_at_pretty': datetime.fromtimestamp(item['status_updated'] / 1000).strftime('%b %d %Y'),
         'draft_picks': item['draft_picks'],
         'adds': item['adds'],
         'roster_ids': item['roster_ids'],

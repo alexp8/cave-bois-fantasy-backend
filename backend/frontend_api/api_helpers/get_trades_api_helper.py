@@ -12,7 +12,7 @@ from frontend_api.cache.get_transactions_data import get_transactions_data
 from logger_util import logger
 
 
-def get_trades(request, sleeper_league_id, roster_id = 'all'):
+def get_trades(request, sleeper_league_id, roster_id='all'):
     page = request.GET.get('page', 1)
     logger.info(f"Getting league trades for league: {sleeper_league_id}, roster_id: {roster_id}, page: {page}")
 
@@ -58,7 +58,7 @@ def get_trades(request, sleeper_league_id, roster_id = 'all'):
     player_ids = set()
     for sleeper_league_id, trades in all_trades.items():
         for trade in trades:
-            if roster_id != 'all' and int(roster_id) not in trade['roster_ids']:
+            if roster_id != 'all' and roster_id is int and int(roster_id) not in trade['roster_ids']:
                 continue
             player_ids.update(trade['adds'].keys())
 
@@ -71,7 +71,7 @@ def get_trades(request, sleeper_league_id, roster_id = 'all'):
     for sleeper_league_id, trades in all_trades.items():
         for trade in trades:
 
-            if roster_id != 'all' and int(roster_id) not in trade['roster_ids']:
+            if roster_id != 'all' and roster_id is int and int(roster_id) not in trade['roster_ids']:
                 continue
 
             trade_obj = {'sleeper_league_id': sleeper_league_id}
@@ -101,7 +101,8 @@ def get_trades(request, sleeper_league_id, roster_id = 'all'):
 
             trade_obj.update({
                 'created_at_millis': trade['created_at_millis'],
-                'created_at_formatted': trade['created_at_formatted'],
+                'created_at_pretty': trade['created_at_pretty'],
+                'created_at_yyyy_mm_dd': trade['created_at_yyyy_mm_dd'],
                 'transaction_id': trade['transaction_id'],
                 'roster_ids': trade['roster_ids'],
                 'week': trade['week']
@@ -125,36 +126,47 @@ def get_traded_player_data(key_player_id, league_users, player_dict, sleeper_lea
                            value_roster_id):
     player = player_dict.get(int(key_player_id))
     user = next((user for user in league_users if user['roster_id'] == value_roster_id), None)
+
+    ktc_values = []
+
     if user is None:
         logger.warn(
             f"Failed to find user with roster_id {value_roster_id}, league={sleeper_league_id} for trade {trade}")
         return False
     if player is None:
-        logger.warn(
-            f"Failed to find player with player_id '{key_player_id}', league={sleeper_league_id} for trade {trade}")
-        return False
+        player = {"player_name": "Unknown Player"}
+    else:
 
-    # ktc latest value
-    ktc_value_latest = (KtcPlayerValues.objects.filter(ktc_player_id__sleeper_player_id=key_player_id)
-                        .order_by('-date').first())
-    # ktc value when traded
-    date_when_traded = datetime.fromtimestamp(trade['created_at_millis'] / 1000).strftime('%Y-%m-%d')
-    ktc_value_when_traded = KtcPlayerValues.objects.filter(ktc_player_id__sleeper_player_id=key_player_id,
-                                                           date=date_when_traded).first()
+        # get ktc values
+        ktc_values = (KtcPlayerValues.objects.filter(ktc_player_id__sleeper_player_id=key_player_id)
+                      .filter(date__gte=trade['created_at_yyyy_mm_dd'])
+                      .values('ktc_value', 'date')
+                      .order_by('-date'))
+
+        ktc_values = [
+            {**item, 'date': item['date'].strftime("%Y-%m-%d")}
+            for item in ktc_values
+        ]
+
+    # KTC value when traded
+    value_when_traded = ktc_values[0]['ktc_value'] if ktc_values and len(ktc_values) > 0 else 0
+
+    # latest KTC value
+    latest_value = ktc_values[-1]['ktc_value'] if ktc_values and len(ktc_values) > 0 else 0
+    latest_value_as_of = ktc_values[-1]['date'] if ktc_values and len(ktc_values) > 0 else 0
+
     trade_obj[value_roster_id]['players'].append({
         'player_id': key_player_id,
         'player_name': player['player_name'],
-        'value_when_traded': ktc_value_when_traded.ktc_value if ktc_value_when_traded else None,
-        'latest_value': ktc_value_latest.ktc_value if ktc_value_latest else None,
-        'value_now_as_of': ktc_value_latest.date if ktc_value_latest else None,
+        'value_when_traded': value_when_traded,
+        'ktc_values': ktc_values,
+        'latest_value': latest_value,
+        'value_now_as_of': latest_value_as_of
     })
 
-    trade_obj[value_roster_id]['total_current_value'] += ktc_value_latest.ktc_value if ktc_value_latest else 0
-    trade_obj[value_roster_id][
-        'total_value_when_traded'] += ktc_value_when_traded.ktc_value if ktc_value_when_traded else 0
+    trade_obj[value_roster_id]['total_current_value'] += latest_value
+    trade_obj[value_roster_id]['total_value_when_traded'] += value_when_traded
     return True
-
-    # get data from traded draft picks
 
 
 def get_draft_pick_data(draft_order, draft_pick, draft_pick_round, league_users, trade_obj):
