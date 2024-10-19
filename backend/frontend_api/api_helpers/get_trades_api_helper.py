@@ -2,8 +2,7 @@ import json
 from collections import defaultdict
 from datetime import datetime
 
-from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-from django.http import JsonResponse
+from django.core.paginator import Paginator
 
 from fantasy_trades_app.models import Players, KtcPlayerValues
 from frontend_api.cache.get_draft_data import get_draft_data
@@ -56,6 +55,10 @@ def get_trades(request, sleeper_league_id, roster_id='all'):
     # Get trades from previous leagues history
     for previous_league in previous_leagues:
         all_trades.extend(get_transactions_data(previous_league['previous_league_id']))
+
+    # filter out trades belonging to different roster_ids
+    if roster_id != 'all':
+        all_trades = [trade for trade in all_trades if int(roster_id) in trade['roster_ids']]
 
     # apply pagination
     paginator = Paginator(all_trades, PAGE_SIZE)
