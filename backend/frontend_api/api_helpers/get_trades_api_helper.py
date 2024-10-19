@@ -192,7 +192,7 @@ def get_traded_player_data(key_player_id, league_users, player_dict, sleeper_lea
 
     # latest KTC value
     latest_value = ktc_values[-1]['ktc_value'] if ktc_values and len(ktc_values) > 0 else 0
-    latest_value_as_of = ktc_values[-1]['date'] if ktc_values and len(ktc_values) > 0 else 0
+    latest_value_as_of = ktc_values[-1]['date'] if ktc_values and len(ktc_values) > 0 else ''
 
     trade_obj[value_roster_id]['players'].append({
         'player_id': key_player_id,
