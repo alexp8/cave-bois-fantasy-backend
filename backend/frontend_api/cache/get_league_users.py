@@ -8,6 +8,7 @@ def get_league_users_data(sleeper_league_id):
 
     cache_key = f"{LEAGUE_USERS_CACHE_KEY}_{sleeper_league_id}"
     league_users_data = cache.get(cache_key)
+    league_users_data = None
 
     if not league_users_data:
         league_users_data = fetch_league_users(sleeper_league_id)
@@ -26,7 +27,8 @@ def fetch_league_users(sleeper_league_id):
         {
             'user_id': user['user_id'],
             'user_name': user['display_name'],
-            'avatar_url': user['metadata'].get('avatar', None),
+            'roster_avatar': user['metadata'].get('avatar', None),
+            'user_avatar': user['avatar'],
             'roster_id': next(
                 (roster['roster_id'] for roster in league_rosters if roster['owner_id'] == user['user_id']),
                 None

@@ -15,6 +15,7 @@ from logger_util import logger
 PAGE_SIZE = 20
 
 def get_trades(request, sleeper_league_id, roster_id='all'):
+
     page = request.GET.get('page', 1)
     logger.info(f"Getting league trades for league: {sleeper_league_id}, roster_id: {roster_id}, page: {page}")
 
@@ -75,7 +76,7 @@ def get_trades(request, sleeper_league_id, roster_id='all'):
     updated_trades = calculate_trade_values(draft_order, league_users, paginated_trades, player_dict, roster_id)
 
     # build response
-    response = {
+    return {
         'league_id': league_data['league_id'],
         'league_name': league_data['name'],
         'league_season': league_data['season'],
@@ -91,8 +92,6 @@ def get_trades(request, sleeper_league_id, roster_id='all'):
         'league_users': league_users,
         'trades': updated_trades
     }
-
-    return JsonResponse(response, safe=False)
 
 
 # Iterate over a list of trades and calculate values
@@ -266,7 +265,6 @@ def init_roster_trade(roster_id, user):
         'total_current_value': 0,
         'total_value_when_traded': 0,
         'user_name': user['user_name'],
-        'avatar_url': user['avatar_url'],
         'user_id': user['user_id'],
         'roster_id': roster_id,
         'fab': 0,

@@ -26,10 +26,10 @@ def get_version(request):
 
 @api_view(['GET'])
 def get_league_trades(request, sleeper_league_id):
-
     try:
         roster_id = request.GET.get('rosterId', None)
-        return get_trades_api_helper.get_trades(request, sleeper_league_id, roster_id)
+        trades_result = get_trades_api_helper.get_trades(request, sleeper_league_id, roster_id)
+        return JsonResponse(trades_result, status=200, safe=False)
     except Exception as e:
         logger.error("Exception occurred", exc_info=True)
         logger.error(traceback.format_exc())
@@ -42,7 +42,6 @@ def get_league_trades(request, sleeper_league_id):
 
 @api_view(['GET'])
 def get_trade(request, transaction_id):
-
     try:
         return get_trade_data(transaction_id)
     except Exception as e:
@@ -53,7 +52,6 @@ def get_trade(request, transaction_id):
 
 @api_view(['GET'])
 def get_leagues(request, user_name):
-
     try:
         return JsonResponse(get_leagues_helper.get_leagues(user_name), status=200, safe=False)
     except Exception as e:
