@@ -12,6 +12,7 @@ from frontend_api.cache.get_league_users import get_league_users_data
 from frontend_api.cache.get_transactions_data import get_transactions_data
 from logger_util import logger
 
+PAGE_SIZE = 20
 
 def get_trades(request, sleeper_league_id, roster_id='all'):
     page = request.GET.get('page', 1)
@@ -49,78 +50,99 @@ def get_trades(request, sleeper_league_id, roster_id='all'):
     )
 
     # Get trades from current league
-    all_trades: dict = get_transactions_data(sleeper_league_id)
+    all_trades: list = get_transactions_data(sleeper_league_id)
 
     # Get trades from previous leagues history
     for previous_league in previous_leagues:
-        all_trades.update(get_transactions_data(previous_league['previous_league_id']))
+        all_trades.extend(get_transactions_data(previous_league['previous_league_id']))
+
+    # apply pagination
+    paginator = Paginator(all_trades, PAGE_SIZE)
+    paginated_trades = paginator.get_page(page)
 
     # Get all player IDs from the trades (adds) in a single query
     player_ids = set()
-    for sleeper_league_id, trades in all_trades.items():
-        for trade in trades:
-            if roster_id != 'all' and roster_id is int and int(roster_id) not in trade['roster_ids']:
-                continue
-            player_ids.update(trade['adds'].keys())
+    for trade in paginated_trades:
+        if roster_id != 'all' and roster_id is int and int(roster_id) not in trade['roster_ids']:
+            continue
+        player_ids.update(trade['adds'].keys())
 
     # Fetch all players at once, using only the necessary fields
     players = Players.objects.filter(sleeper_player_id__in=player_ids).values('sleeper_player_id', 'player_name')
     player_dict = {player['sleeper_player_id']: player for player in players}
 
     # loop over trades and build response
-    updated_trades = []
-    for sleeper_league_id, trades in all_trades.items():
-        for trade in trades:
+    updated_trades = calculate_trade_values(draft_order, league_users, paginated_trades, player_dict, roster_id)
 
-            if roster_id != 'all' and roster_id is int and int(roster_id) not in trade['roster_ids']:
-                continue
-
-            trade_obj = {'sleeper_league_id': sleeper_league_id}
-
-            # Initialize the roster_id entry in trade_obj
-            for roster_id_temp in trade['roster_ids']:
-                user = next((user for user in league_users if user['roster_id'] == roster_id_temp), None)
-                trade_obj[roster_id_temp] = init_roster_trade(roster_id_temp, user)
-
-            # get any fab
-            for waiver_budget in trade['waiver_budget']:
-                trade_obj[waiver_budget['receiver']]['fab'] += waiver_budget['amount']
-                trade_obj[waiver_budget['sender']]['fab'] -= waiver_budget['amount']
-
-            # grab values from draft picks
-            for draft_pick in trade['draft_picks']:
-                draft_pick_round = draft_pick['round']
-                get_draft_pick_data(draft_order, draft_pick, draft_pick_round, league_users, trade_obj)
-
-            # grab values from traded_players
-            for key_player_id, value_roster_id in trade['adds'].items():
-                result = get_traded_player_data(key_player_id, league_users, player_dict, sleeper_league_id, trade,
-                                                trade_obj,
-                                                value_roster_id)
-                if not result:  # bad data found
-                    continue
-
-            trade_obj.update({
-                'created_at_millis': trade['created_at_millis'],
-                'created_at_pretty': trade['created_at_pretty'],
-                'created_at_yyyy_mm_dd': trade['created_at_yyyy_mm_dd'],
-                'transaction_id': trade['transaction_id'],
-                'roster_ids': trade['roster_ids'],
-                'week': trade['week']
-            })
-
-            # see who won the trade
-            set_trade_winner(trade, trade_obj)
-
-            updated_trades.append(trade_obj)
-
-    # Sort the results most recent first
-    updated_trades.sort(key=lambda trade: trade['created_at_millis'], reverse=True)
-
-    # Paginate the result
-    response = paginate_response(previous_leagues, page, updated_trades, league_data, league_users, roster_id)
+    # build response
+    response = {
+        'league_id': league_data['league_id'],
+        'league_name': league_data['name'],
+        'league_season': league_data['season'],
+        'league_avatar': league_data['avatar'],
+        'roster_id': roster_id,
+        'page': paginated_trades.number,
+        'page_size': PAGE_SIZE,
+        'total_pages': paginator.num_pages,
+        'total_trades': paginator.count,
+        'has_next': paginated_trades.has_next(),
+        'has_previous': paginated_trades.has_previous(),
+        'previous_leagues': previous_leagues,
+        'league_users': league_users,
+        'trades': updated_trades
+    }
 
     return JsonResponse(response, safe=False)
+
+
+# Iterate over a list of trades and calculate values
+def calculate_trade_values(draft_order, league_users, paginated_trades, player_dict, roster_id):
+
+    updated_trades = []
+
+    for trade in paginated_trades:
+
+        if roster_id != 'all' and roster_id is int and int(roster_id) not in trade['roster_ids']:
+            continue
+
+        trade_obj = {'sleeper_league_id': trade['sleeper_league_id']}
+
+        # Initialize the roster_id entry in trade_obj
+        for roster_id_temp in trade['roster_ids']:
+            user = next((user for user in league_users if user['roster_id'] == roster_id_temp), None)
+            trade_obj[roster_id_temp] = init_roster_trade(roster_id_temp, user)
+
+        # get any fab
+        for waiver_budget in trade['waiver_budget']:
+            trade_obj[waiver_budget['receiver']]['fab'] += waiver_budget['amount']
+            trade_obj[waiver_budget['sender']]['fab'] -= waiver_budget['amount']
+
+        # grab values from draft picks
+        for draft_pick in trade['draft_picks']:
+            draft_pick_round = draft_pick['round']
+            get_draft_pick_data(draft_order, draft_pick, draft_pick_round, league_users, trade_obj)
+
+        # grab values from traded_players
+        for key_player_id, value_roster_id in trade['adds'].items():
+            get_traded_player_data(key_player_id, player_dict, trade, trade_obj,  value_roster_id)
+
+        trade_obj.update({
+            'created_at_millis': trade['created_at_millis'],
+            'created_at_pretty': trade['created_at_pretty'],
+            'created_at_yyyy_mm_dd': trade['created_at_yyyy_mm_dd'],
+            'transaction_id': trade['transaction_id'],
+            'roster_ids': trade['roster_ids'],
+            'week': trade['week']
+        })
+
+        # see who won the trade
+        set_trade_winner(trade, trade_obj)
+
+        updated_trades.append(trade_obj)
+
+    updated_trades.sort(key=lambda trade_t: trade_t['created_at_millis'], reverse=True)
+
+    return updated_trades
 
 
 # reduce values returned, grab one value per week
@@ -158,17 +180,13 @@ def trim_ktc_values(ktc_values):
     # return sorted(trimmed_data, key=lambda x: x['date'])
 
 
-def get_traded_player_data(key_player_id, league_users, player_dict, sleeper_league_id, trade, trade_obj,
+def get_traded_player_data(key_player_id, player_dict, trade, trade_obj,
                            value_roster_id):
+
     player = player_dict.get(int(key_player_id))
-    user = next((user for user in league_users if user['roster_id'] == value_roster_id), None)
 
     ktc_values = []
 
-    if user is None:
-        logger.warn(
-            f"Failed to find user with roster_id {value_roster_id}, league={sleeper_league_id} for trade {trade}")
-        return False
     if player is None:
         player = {"player_name": "Unknown Player"}
     else:
@@ -205,7 +223,6 @@ def get_traded_player_data(key_player_id, league_users, player_dict, sleeper_lea
 
     trade_obj[value_roster_id]['total_current_value'] += latest_value
     trade_obj[value_roster_id]['total_value_when_traded'] += value_when_traded
-    return True
 
 
 def get_draft_pick_data(draft_order, draft_pick, draft_pick_round, league_users, trade_obj):
@@ -265,40 +282,6 @@ def set_trade_winner(trade, trade_obj):
     # Mark the rosters with the maximum value as winners
     for roster_id in trade['roster_ids']:
         trade_obj[roster_id]['won'] = (trade_obj[roster_id]['total_current_value'] == max_value)
-
-
-def paginate_response(previous_leagues, page, updated_trades, league_data, league_users, roster_id):
-    page_size = 20
-    api_response = {
-        'previous_league_ids': previous_leagues,
-        'trades': updated_trades
-    }
-    # paginate the trades
-    paginator = Paginator(api_response['trades'], page_size)
-    try:
-        paginated_trades = paginator.page(page)
-    except PageNotAnInteger:
-        paginated_trades = paginator.page(1)
-    except EmptyPage:
-        paginated_trades = paginator.page(paginator.num_pages)
-
-    # Prepare the paginated response
-    return {
-        'league_id': league_data['league_id'],
-        'league_name': league_data['name'],
-        'league_season': league_data['season'],
-        'league_avatar': league_data['avatar'],
-        'roster_id': roster_id,
-        'page': paginated_trades.number,
-        'page_size': page_size,
-        'total_pages': paginator.num_pages,
-        'total_trades': paginator.count,
-        'has_next': paginated_trades.has_next(),
-        'has_previous': paginated_trades.has_previous(),
-        'previous_leagues': api_response['previous_league_ids'],  # Include previous league IDs
-        'league_users': league_users,
-        'trades': list(paginated_trades.object_list)  # Paginated trades
-    }
 
 
 def get_previous_league_ids(league_data):

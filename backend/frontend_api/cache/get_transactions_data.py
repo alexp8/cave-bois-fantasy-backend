@@ -9,9 +9,10 @@ from sleeper_api.sleeper_api_svc import get_transactions
 NUMBER_OF_WEEKS = 21
 
 
-def transform_transaction_data(item):
+def transform_transaction_data(item, sleeper_league_id):
     return {
         'created_at_millis': item['status_updated'],
+        'sleeper_league_id': sleeper_league_id,
         'created_at_yyyy_mm_dd': datetime.fromtimestamp(item['status_updated'] / 1000).strftime('%Y-%m-%d'),
         'created_at_pretty': datetime.fromtimestamp(item['status_updated'] / 1000).strftime('%b %d %Y'),
         'draft_picks': item['draft_picks'],
@@ -24,7 +25,6 @@ def transform_transaction_data(item):
 
 
 def get_transactions_data(sleeper_league_id):
-    all_trades = {}
     trades_list = []
 
     for week in range(NUMBER_OF_WEEKS):
@@ -34,7 +34,7 @@ def get_transactions_data(sleeper_league_id):
         if not league_transactions_data:
             league_transactions_data = get_transactions(sleeper_league_id, week)  # query sleeper API
             league_transactions_data = [
-                transform_transaction_data(item)
+                transform_transaction_data(item, sleeper_league_id)
                 for item in league_transactions_data
                 if item.get('type') == 'trade'
                    and item.get('status') == 'complete'
@@ -46,7 +46,5 @@ def get_transactions_data(sleeper_league_id):
             continue
         trades_list.extend(league_transactions_data)
 
-    if trades_list:
-        all_trades[sleeper_league_id] = trades_list
     logger.info(f"Found {len(trades_list)} trades for league ID {sleeper_league_id}")
-    return all_trades
+    return trades_list
