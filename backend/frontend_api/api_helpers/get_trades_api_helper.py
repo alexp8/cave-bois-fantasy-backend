@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 from datetime import datetime
 
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
@@ -122,6 +123,41 @@ def get_trades(request, sleeper_league_id, roster_id='all'):
     return JsonResponse(response, safe=False)
 
 
+# reduce values returned, grab one value per week
+def trim_ktc_values(ktc_values):
+
+    # convert dates from string to date
+    for ktc_value in ktc_values:
+        ktc_value['date'] = datetime.strptime(ktc_value['date'], '%Y-%m-%d')
+    data = sorted(ktc_values, key=lambda x: x['date'])
+
+    # Group entries by year-month
+    grouped_by_month = defaultdict(list)
+    for entry in data:
+        year_month = entry['date'].strftime('%Y-%m')
+        grouped_by_month[year_month].append(entry)
+
+    # Select one entry per week per month
+    trimmed_data = []
+    for year_month, entries in grouped_by_month.items():
+        weeks = defaultdict(list)
+        for entry in entries:
+            week = entry['date'].strftime('%U')
+            weeks[week].append(entry)
+
+        # Select one entry per week
+        for week_entries in weeks.values():
+            trimmed_data.append(week_entries[0])
+
+    # Convert datetime objects back to date strings
+    for entry in trimmed_data:
+        entry['date'] = entry['date'].strftime('%Y-%m-%d')
+
+    return trimmed_data
+    # Optionally, sort the final trimmed data by date
+    # return sorted(trimmed_data, key=lambda x: x['date'])
+
+
 def get_traded_player_data(key_player_id, league_users, player_dict, sleeper_league_id, trade, trade_obj,
                            value_roster_id):
     player = player_dict.get(int(key_player_id))
@@ -147,6 +183,9 @@ def get_traded_player_data(key_player_id, league_users, player_dict, sleeper_lea
             {**item, 'date': item['date'].strftime("%Y-%m-%d")}
             for item in ktc_values
         ]
+
+        # reduce values returned
+        ktc_values = trim_ktc_values(ktc_values)
 
     # KTC value when traded
     value_when_traded = ktc_values[0]['ktc_value'] if ktc_values and len(ktc_values) > 0 else 0
