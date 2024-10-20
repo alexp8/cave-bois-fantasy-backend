@@ -18,11 +18,14 @@ def get_leagues(username):
             'avatar': user_league['avatar'],
             'season': user_league['season'],
             'sport': user_league['sport'],
+            'type_index': user_league['settings']['type'],
             'type': get_league_type(user_league['settings']['type']),  # 0 = redraft, 1 = keeper, 2 = dynasty
         }
         for user_league in user_leagues
         if user_league['sport'] == 'nfl'
     ]
+
+    user_leagues.sort(key=lambda user_l: user_l['type_index'], reverse=True)
 
     return user_leagues
 
