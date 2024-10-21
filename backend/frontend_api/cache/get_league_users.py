@@ -2,7 +2,7 @@ import json
 
 from django.core.cache import cache
 from frontend_api.cache.constants import CACHE_DURATION, LEAGUE_USERS_CACHE_KEY
-from sleeper_api.sleeper_api_svc import get_users, get_rosters
+from sleeper_api import sleeper_api_svc
 
 def get_league_users_data(sleeper_league_id):
 
@@ -19,8 +19,8 @@ def get_league_users_data(sleeper_league_id):
     return league_users_data
 
 def fetch_league_users(sleeper_league_id):
-    league_users: json = get_users(sleeper_league_id)
-    league_rosters: json = get_rosters(sleeper_league_id)
+    league_users: json = sleeper_api_svc.get_users(sleeper_league_id)
+    league_rosters: json = sleeper_api_svc.get_rosters(sleeper_league_id)
 
     league_users: list = [
         {

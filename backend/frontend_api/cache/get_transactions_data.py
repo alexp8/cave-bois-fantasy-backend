@@ -4,7 +4,7 @@ from django.core.cache import cache
 
 from frontend_api.cache.constants import LEAGUE_TRANSACTIONS_CACHE_KEY, CACHE_DURATION
 from logger_util import logger
-from sleeper_api.sleeper_api_svc import get_transactions
+from sleeper_api import sleeper_api_svc
 
 NUMBER_OF_WEEKS = 21
 
@@ -32,7 +32,7 @@ def get_transactions_data(sleeper_league_id):
         league_transactions_data = cache.get(cache_key)
 
         if not league_transactions_data:
-            league_transactions_data = get_transactions(sleeper_league_id, week)  # query sleeper API
+            league_transactions_data = sleeper_api_svc.get_transactions(sleeper_league_id, week)  # query sleeper API
             league_transactions_data = [
                 transform_transaction_data(item, sleeper_league_id)
                 for item in league_transactions_data

@@ -40,7 +40,7 @@ def get_matchups(league_id, week):
 def get_league(league_id):
     return fetch_data_from_sleeper_api(f"league/{league_id}")
 
-def get_draft(league_id):
+def get_drafts(league_id):
     return fetch_data_from_sleeper_api(f"league/{league_id}/drafts")
 
 def get_user_info(user_name):
@@ -48,3 +48,7 @@ def get_user_info(user_name):
 
 def get_user_leagues(user_id, sport, season):
     return fetch_data_from_sleeper_api(f"user/{user_id}/leagues/{sport}/{season}")
+
+def get_draft_picks(draft_id):
+    return fetch_data_from_sleeper_api(f"draft/{draft_id}/picks")
+

@@ -5,7 +5,7 @@ from datetime import datetime
 from django.core.paginator import Paginator
 
 from fantasy_trades_app.models import Players, KtcPlayerValues
-from frontend_api.cache.get_draft_data import get_draft_data
+from frontend_api.cache import get_drafts_data, get_draft_picks_data
 from frontend_api.cache.get_league_data import get_league_data
 from frontend_api.cache.get_league_users import get_league_users_data
 from frontend_api.cache.get_transactions_data import get_transactions_data
@@ -13,8 +13,8 @@ from logger_util import logger
 
 PAGE_SIZE = 20
 
-def get_trades(request, sleeper_league_id, roster_id='all'):
 
+def get_trades(request, sleeper_league_id, roster_id='all'):
     page = request.GET.get('page', 1)
     logger.info(f"Getting league trades for league: {sleeper_league_id}, roster_id: {roster_id}, page: {page}")
 
@@ -28,19 +28,7 @@ def get_trades(request, sleeper_league_id, roster_id='all'):
     previous_leagues: list = get_previous_league_ids(league_data)
 
     # get draft data
-    draft_response = get_draft_data(sleeper_league_id)[0]
-    draft_order = {
-        f"{draft_response['season']}_{key}": value
-        for key, value in draft_response['draft_order'].items()
-    }
-
-    # get previous drafts data
-    for previous_league in previous_leagues:
-        draft_response = get_draft_data(previous_league['previous_league_id'])[0]
-        draft_order.update({
-            f"{draft_response['season']}_{key}": value
-            for key, value in draft_response['draft_order'].items()
-        })
+    draft_picks_dict = get_draft_data(sleeper_league_id, previous_leagues)
 
     logger.info(
         f"Getting transactions from sleeper league: "
@@ -76,7 +64,7 @@ def get_trades(request, sleeper_league_id, roster_id='all'):
     player_dict = {player['sleeper_player_id']: player for player in players}
 
     # loop over trades and build response
-    updated_trades = calculate_trade_values(draft_order, league_users, paginated_trades, player_dict, roster_id)
+    updated_trades = calculate_trade_values(draft_picks_dict, league_users, paginated_trades, player_dict, roster_id)
 
     # build response
     return {
@@ -97,9 +85,26 @@ def get_trades(request, sleeper_league_id, roster_id='all'):
     }
 
 
-# Iterate over a list of trades and calculate values
-def calculate_trade_values(draft_order, league_users, paginated_trades, player_dict, roster_id):
+def get_draft_data(sleeper_league_id, previous_leagues):
+    draft_data_dict = {}
+    all_drafts = []
+    draft_data = get_drafts_data.get_data(sleeper_league_id)[0]
+    all_drafts.append(draft_data)
 
+    # get previous drafts data
+    for previous_league in previous_leagues:
+        draft_response = get_drafts_data.get_data(previous_league['previous_league_id'])[0]
+        all_drafts.append(draft_response)
+
+    for draft in all_drafts:
+        draft_picks = get_draft_picks_data.get_data(draft['draft_id'])
+        draft_data_dict[draft['season']] = draft_picks
+
+    return draft_data_dict
+
+
+# Iterate over a list of trades and calculate values
+def calculate_trade_values(draft_picks_dict, league_users, paginated_trades, player_dict, roster_id):
     updated_trades = []
 
     for trade in paginated_trades:
@@ -120,13 +125,13 @@ def calculate_trade_values(draft_order, league_users, paginated_trades, player_d
             trade_obj[waiver_budget['sender']]['fab'] -= waiver_budget['amount']
 
         # grab values from draft picks
-        for draft_pick in trade['draft_picks']:
-            draft_pick_round = draft_pick['round']
-            get_draft_pick_data(draft_order, draft_pick, draft_pick_round, league_users, trade_obj)
+        for traded_draft_pick in trade['draft_picks']:
+            draft_pick_round = traded_draft_pick['round']
+            get_draft_pick_data(draft_picks_dict, traded_draft_pick, league_users, trade_obj)
 
         # grab values from traded_players
         for key_player_id, value_roster_id in trade['adds'].items():
-            get_traded_player_data(key_player_id, player_dict, trade, trade_obj,  value_roster_id)
+            get_traded_player_data(key_player_id, player_dict, trade, trade_obj, value_roster_id)
 
         trade_obj.update({
             'created_at_millis': trade['created_at_millis'],
@@ -149,7 +154,6 @@ def calculate_trade_values(draft_order, league_users, paginated_trades, player_d
 
 # reduce values returned, grab one value per week
 def trim_ktc_values(ktc_values):
-
     # convert dates from string to date
     for ktc_value in ktc_values:
         ktc_value['date'] = datetime.strptime(ktc_value['date'], '%Y-%m-%d')
@@ -184,7 +188,6 @@ def trim_ktc_values(ktc_values):
 
 def get_traded_player_data(key_player_id, player_dict, trade, trade_obj,
                            value_roster_id):
-
     player = player_dict.get(int(key_player_id))
 
     ktc_values = []
@@ -227,40 +230,48 @@ def get_traded_player_data(key_player_id, player_dict, trade, trade_obj,
     trade_obj[value_roster_id]['total_value_when_traded'] += value_when_traded
 
 
-def get_draft_pick_data(draft_order, draft_pick, draft_pick_round, league_users, trade_obj):
-    # get the user's draft position
-    user = next((user for user in league_users if user['roster_id'] == draft_pick['owner_id']), None)
-    key_order_key = f"{draft_pick['season']}_{user['user_id']}"
-    draft_order_number = draft_order[key_order_key] if key_order_key in draft_order else None
-    draft_pick_range = get_draft_pick_range(draft_order_number)
-    draft_pick_value = 750  # 5th rd pick value
+def get_draft_pick_data(draft_picks_dict, traded_draft_pick, trade_obj):
 
-    if draft_pick_round < 5:
-        draft_filter = f"{draft_pick_range} {draft_pick_round}"
-        draft_pick_player = Players.objects.filter(player_name__icontains=draft_filter).first()
+    # the draft pick was used to select a player
+    if traded_draft_pick['season'] in draft_picks_dict:
 
+        # TODO get the player that was drafted with the draft pick
+        draft = draft_picks_dict[traded_draft_pick['season']]
+        draft_pick_player = next((draft_pick for draft_pick in draft if draft_pick['roster_id'] == traded_draft_pick['roster_id']), None)
         if draft_pick_player is None:
-            raise Exception(f"Unable to find draft pick '{draft_filter}'")
+            raise Exception(f"Unable to find draft pick for roster_id {traded_draft_pick['roster_id']} in draft {draft}")
 
-        # get the draft pick's value
-        draft_pick_player_value = KtcPlayerValues.objects.filter(
-            ktc_player_id=draft_pick_player.ktc_player_id).first()
+        player_id_drafted = draft_pick_player['player_id']
+        # TODO get ktc value of this player
 
-        if draft_pick_player:
-            draft_pick_value = draft_pick_player_value.ktc_value
+    # Draft pick is a future pick
+    else:
 
-    trade_obj[draft_pick['owner_id']]['draft_picks'].append({
-        'round': draft_pick['round'],
-        'range': draft_pick_range,
-        'season': draft_pick['season'],
+        if traded_draft_pick['round'] < 5: # rounds 1-4 have KTC values
+            draft_filter = f"{traded_draft_pick['season']} Mid {traded_draft_pick['round']}"
+            draft_pick_player = Players.objects.filter(player_name__icontains=draft_filter).first()
+
+            if draft_pick_player is None:
+                raise Exception(f"Unable to find draft pick '{draft_filter}'")
+
+            # get the draft pick's value
+            draft_pick_player_value = KtcPlayerValues.objects.filter(
+                ktc_player_id=draft_pick_player.ktc_player_id).first()
+
+            if draft_pick_player:
+                draft_pick_value = draft_pick_player_value.ktc_value
+
+    trade_obj[traded_draft_pick['owner_id']]['draft_picks'].append({
+        'round': traded_draft_pick['round'],
+        'season': traded_draft_pick['season'],
         'value_when_traded': draft_pick_value,
-        'description': f"{draft_pick['season']} {draft_pick_range} {number_with_suffix(draft_pick['round'])} round",
-        'latest_value': draft_pick_value,  # TODO get latest value for this draft pick
+        'description': f"{traded_draft_pick['season']} {number_with_suffix(traded_draft_pick['round'])} round",
+        'latest_value': draft_pick_value,
         'value_now_as_of': None  # TODO
     })
 
-    trade_obj[draft_pick['owner_id']]['total_current_value'] += draft_pick_value
-    trade_obj[draft_pick['owner_id']]['total_value_when_traded'] += draft_pick_value
+    trade_obj[traded_draft_pick['owner_id']]['total_current_value'] += draft_pick_value
+    trade_obj[traded_draft_pick['owner_id']]['total_value_when_traded'] += draft_pick_value
 
 
 def init_roster_trade(roster_id, user):
@@ -301,19 +312,6 @@ def get_previous_league_ids(league_data):
             }
         )
     return previous_leagues
-
-
-def get_draft_pick_range(draft_order_number):
-    if draft_order_number is None:
-        return 'Mid'
-    elif draft_order_number <= 4:  # 1-4
-        return 'Early'
-    elif draft_order_number <= 8:  # 5-8
-        return 'Mid'
-    elif draft_order_number > 8:  # 9-12
-        return 'Late'
-    else:
-        return 'Unknown'
 
 
 def number_with_suffix(val):
