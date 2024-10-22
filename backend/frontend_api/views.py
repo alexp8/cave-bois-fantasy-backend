@@ -1,7 +1,9 @@
+import json
 import traceback
 
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
+from rest_framework.request import Request
 
 from fantasy_trades_app.settings import VERSION
 from frontend_api.api_helpers import get_trades_api_helper, get_leagues_helper
@@ -21,27 +23,32 @@ def get_players_from_sleeper_like(request, search_str):
 
 @api_view(['GET'])
 def get_version(request):
-    return JsonResponse({"version": VERSION}, safe=False)
+    return JsonResponse(data={"version": VERSION}, safe=False)
 
 
 @api_view(['GET'])
-def get_league_trades(request, sleeper_league_id):
+def get_league_trades(request: Request, sleeper_league_id: str) -> JsonResponse:
     try:
-        roster_id = request.GET.get('rosterId', None)
-        trades_result = get_trades_api_helper.get_trades(request, sleeper_league_id, roster_id)
-        return JsonResponse(trades_result, status=200, safe=False)
+        roster_id = request.GET.get('rosterId', 'all')
+        trades_result = get_trades_api_helper.get_trades(
+            request=request,
+            sleeper_league_id=sleeper_league_id,
+            roster_id=roster_id
+        )
+        logger.info('trades_result: %s', trades_result)
+        return JsonResponse(data=trades_result, status=200, safe=False)
     except Exception as e:
         logger.error("Exception occurred", exc_info=True)
         logger.error(traceback.format_exc())
         return JsonResponse(
-            {"error": f"Error while fetching trades for league '{sleeper_league_id}'"},
+            data={"error": f"Error while fetching trades for league '{sleeper_league_id}'"},
             status=500,
             safe=False
         )
 
 
 @api_view(['GET'])
-def get_trade(request, transaction_id):
+def get_trade(request: Request, transaction_id: str) -> JsonResponse:
     try:
         return get_trade_data(transaction_id)
     except Exception as e:
@@ -51,10 +58,10 @@ def get_trade(request, transaction_id):
 
 
 @api_view(['GET'])
-def get_leagues(request, user_name):
+def get_leagues(request: Request, user_name: str) -> JsonResponse:
     try:
-        return JsonResponse(get_leagues_helper.get_leagues(user_name), status=200, safe=False)
+        return JsonResponse(data=get_leagues_helper.get_leagues(username=user_name), status=200, safe=False)
     except Exception as e:
-        logger.error("Exception occurred", exc_info=True)
-        logger.error(traceback.format_exc())
-        return JsonResponse({"error": "Error while fetching user info"}, status=500, safe=False)
+        logger.error(msg="Exception occurred", exc_info=True)
+        logger.error(msg=traceback.format_exc())
+        return JsonResponse(data={"error": "Error while fetching user info"}, status=500, safe=False)

@@ -1,17 +1,22 @@
+import json
 from datetime import datetime
 
-from sleeper_api.sleeper_api_svc import get_user_info, get_user_leagues
+from sleeper_api import sleeper_api_svc
+
 
 # get all the leagues that user is in
-def get_leagues(username):
-
+def get_leagues(username: str) -> list[json]:
     # get user info
-    user_info = get_user_info(username)
+    user_info: json = sleeper_api_svc.get_user_info(username=username)
 
     # get user leagues
-    user_leagues = get_user_leagues(user_info['user_id'], 'nfl', str(datetime.now().year))
+    user_leagues: json = sleeper_api_svc.get_user_leagues(
+        user_id=user_info['user_id'],
+        sport='nfl',
+        season=str(datetime.now().year)
+    )
 
-    user_leagues: list = [
+    user_leagues: list[json] = [
         {
             'league_id': user_league['league_id'],
             'name': user_league['name'],
@@ -29,7 +34,8 @@ def get_leagues(username):
 
     return user_leagues
 
-def get_league_type(league_type):
+
+def get_league_type(league_type: int) -> str:
     return {
         0: 'Redraft',
         1: 'Keeper',

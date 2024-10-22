@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 from django.core.cache import cache
@@ -9,7 +10,7 @@ from sleeper_api import sleeper_api_svc
 NUMBER_OF_WEEKS = 21
 
 
-def transform_transaction_data(item, sleeper_league_id):
+def transform_transaction_data(item: json, sleeper_league_id: str) -> json:
     return {
         'created_at_millis': item['status_updated'],
         'sleeper_league_id': sleeper_league_id,
@@ -24,16 +25,16 @@ def transform_transaction_data(item, sleeper_league_id):
     }
 
 
-def get_transactions_data(sleeper_league_id):
-    trades_list = []
+def get_data(sleeper_league_id: str) -> json:
+    trades_list: list = []
 
     for week in range(NUMBER_OF_WEEKS):
-        cache_key = f"{LEAGUE_TRANSACTIONS_CACHE_KEY}_{sleeper_league_id}_{week}"
-        league_transactions_data = cache.get(cache_key)
+        cache_key: str = f"{LEAGUE_TRANSACTIONS_CACHE_KEY}_{sleeper_league_id}_{week}"
+        league_transactions_data: json = cache.get(cache_key)
 
         if not league_transactions_data:
-            league_transactions_data = sleeper_api_svc.get_transactions(sleeper_league_id, week)  # query sleeper API
-            league_transactions_data = [
+            league_transactions_data: json = sleeper_api_svc.get_transactions(sleeper_league_id, week)  # query sleeper API
+            league_transactions_data: list = [
                 transform_transaction_data(item, sleeper_league_id)
                 for item in league_transactions_data
                 if item.get('type') == 'trade'

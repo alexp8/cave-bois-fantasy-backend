@@ -31,6 +31,7 @@ def get_users(league_id):
 def get_players():
     return fetch_data_from_sleeper_api(f"players/nfl")
 
+# https://docs.sleeper.com/#getting-rosters-in-a-league
 def get_rosters(league_id):
     return fetch_data_from_sleeper_api(f"league/{league_id}/rosters")
 
@@ -43,12 +44,16 @@ def get_league(league_id):
 def get_drafts(league_id):
     return fetch_data_from_sleeper_api(f"league/{league_id}/drafts")
 
-def get_user_info(user_name):
-    return fetch_data_from_sleeper_api(f"user/{user_name}")
+def get_user_info(username):
+    return fetch_data_from_sleeper_api(f"user/{username}")
 
 def get_user_leagues(user_id, sport, season):
     return fetch_data_from_sleeper_api(f"user/{user_id}/leagues/{sport}/{season}")
 
+# https://docs.sleeper.com/#get-a-specific-draft
 def get_draft_picks(draft_id):
     return fetch_data_from_sleeper_api(f"draft/{draft_id}/picks")
 
+# https://docs.sleeper.com/#get-traded-picks-in-a-draft
+def get_traded_draft_picks(draft_id):
+    return fetch_data_from_sleeper_api(f"draft/{draft_id}/traded_picks")

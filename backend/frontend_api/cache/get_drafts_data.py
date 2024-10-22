@@ -15,4 +15,20 @@ def get_data(sleeper_league_id):
     draft_data = cache.get(draft_cache_key)
     if not draft_data:
         draft_data = fetch_and_cache_draft_data(sleeper_league_id, draft_cache_key)
+
+    draft_data = draft_data[0]
+
+    del draft_data['settings']
+    del draft_data['season_type']
+    del draft_data['start_time']
+    del draft_data['type']
+    del draft_data['status']
+    del draft_data['metadata']
+    del draft_data['last_message_id']
+    del draft_data['last_message_time']
+    del draft_data['last_picked']
+    del draft_data['created']
+    del draft_data['creators']
+    del draft_data['sport']
+
     return draft_data
