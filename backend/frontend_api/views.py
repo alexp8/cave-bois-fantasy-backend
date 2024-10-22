@@ -1,4 +1,3 @@
-import json
 import traceback
 
 from django.http import JsonResponse
@@ -35,7 +34,6 @@ def get_league_trades(request: Request, sleeper_league_id: str) -> JsonResponse:
             sleeper_league_id=sleeper_league_id,
             roster_id=roster_id
         )
-        logger.info('trades_result: %s', trades_result)
         return JsonResponse(data=trades_result, status=200, safe=False)
     except Exception as e:
         logger.error("Exception occurred", exc_info=True)

@@ -149,7 +149,7 @@ def calculate_trade_values(
                 player_dict=player_dict,
                 trade_created_at=trade['created_at_yyyy_mm_dd']
             )
-            trade_obj[traded_draft_pick['owner_id']]['draft_picks'].update(draft_pick_value)
+            trade_obj[traded_draft_pick['owner_id']]['draft_picks'].append(draft_pick_value)
             trade_obj['total_current_value'] += draft_pick_value['latest_value']
             trade_obj['total_value_when_traded'] += draft_pick_value['value_when_traded']
 
@@ -270,9 +270,18 @@ def get_draft_pick_data(
         trade_created_at: str) -> json:
     draft_round = traded_draft_pick['round']
     traded_draft_pick_original_roster_id = traded_draft_pick['roster_id']  # the team this pick originally belonged to
-    draft_pick_value = {}
 
-    # the draft pick was used to select a player
+    draft_pick_value_dict: dict = {
+        'player_drafted': None,
+        'latest_value': 0,
+        'value_when_traded': 0,
+        'round': traded_draft_pick['round'],
+        'season': traded_draft_pick['season'],
+        'description': f"{traded_draft_pick['season']} {number_with_suffix(traded_draft_pick['round'])} round",
+        'value_now_as_of': None
+    }
+
+    # the draft pick has been used to draft a player
     if traded_draft_pick['season'] in draft_data:
 
         # get the player that was drafted with the draft pick
@@ -281,14 +290,14 @@ def get_draft_pick_data(
         draft_picks = draft_data[traded_draft_pick['season']]['draft_picks']
 
         # Using the round and the roster_id, find what the user selected with that pick
-        draft_pick_player = next(
+        draft_pick_db_result = next(
             (draft_pick for draft_pick in draft_picks if draft_pick['draft_slot'] == draft_slot
              and draft_round == draft_pick['round']), None)
-        if draft_pick_player is None:
+        if draft_pick_db_result is None:
             raise Exception(
                 f"Unable to find draft pick for roster_id {traded_draft_pick['roster_id']} for draft_slot {draft_slot}")
 
-        player_id_drafted = draft_pick_player['player_id']
+        player_id_drafted = draft_pick_db_result['player_id']
         logger.info(f"player_id {player_id_drafted}, drafted at {draft_slot}, by {user_id}")
 
         # get ktc value of this player
@@ -299,38 +308,31 @@ def get_draft_pick_data(
         )
 
         # add the drafted player's value to the trade
-        draft_pick_value['player_drafted'] = player_data_value
-        draft_pick_value['latest_value'] = player_data_value['latest_value']
-        draft_pick_value['value_when_traded'] = player_data_value['value_when_traded']
+        draft_pick_value_dict['player_drafted'] = player_data_value
+        draft_pick_value_dict['latest_value'] = player_data_value['latest_value']
+        draft_pick_value_dict['value_when_traded'] = player_data_value['value_when_traded']
+        draft_pick_value_dict['value_now_as_of'] = player_data_value['value_now_as_of']
 
 
-    # Draft pick is a future pick
+    # Draft pick is a future pick, get its projected KTC value
     else:
 
         if draft_round < 5:  # rounds 1-4 have KTC values
             draft_filter = f"{traded_draft_pick['season']} Mid {traded_draft_pick['round']}"
-            draft_pick_player = Players.objects.filter(player_name__icontains=draft_filter).first()
+            draft_pick_db_result = Players.objects.filter(player_name__icontains=draft_filter).first()
 
-            if draft_pick_player is None:
+            if draft_pick_db_result is None:
                 raise Exception(f"Unable to find draft pick '{draft_filter}'")
 
             # get the draft pick's value
-            draft_pick_player_value = KtcPlayerValues.objects.filter(
-                ktc_player_id=draft_pick_player.ktc_player_id).first()
+            draft_pick_player_value_db = KtcPlayerValues.objects.filter(
+                ktc_player_id=draft_pick_db_result.ktc_player_id).first()
 
-            if draft_pick_player:
-                draft_pick_value['draft_pick_value'] = draft_pick_player_value.ktc_value
+            if draft_pick_db_result:
+                draft_pick_value_dict['latest_value'] = draft_pick_player_value_db.ktc_value
+                draft_pick_value_dict['value_when_traded'] = draft_pick_player_value_db.ktc_value
 
-    draft_pick_value = {
-        'round': traded_draft_pick['round'],
-        'season': traded_draft_pick['season'],
-        'value_when_traded': draft_pick_value,
-        'description': f"{traded_draft_pick['season']} {number_with_suffix(traded_draft_pick['round'])} round",
-        'latest_value': draft_pick_value,
-        'value_now_as_of': None  # TODO
-    }
-
-    return draft_pick_value
+    return draft_pick_value_dict
 
 
 def init_roster_trade(roster_id: int, user: LeagueUser) -> json:
