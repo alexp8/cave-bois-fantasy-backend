@@ -278,7 +278,8 @@ def get_draft_pick_data(
         'round': traded_draft_pick['round'],
         'season': traded_draft_pick['season'],
         'description': f"{traded_draft_pick['season']} {number_with_suffix(traded_draft_pick['round'])} round",
-        'value_now_as_of': None
+        'value_now_as_of': None,
+        'draft_slot' : None
     }
 
     # the draft pick has been used to draft a player
@@ -312,6 +313,7 @@ def get_draft_pick_data(
         draft_pick_value_dict['latest_value'] = player_data_value['latest_value']
         draft_pick_value_dict['value_when_traded'] = player_data_value['value_when_traded']
         draft_pick_value_dict['value_now_as_of'] = player_data_value['value_now_as_of']
+        draft_pick_value_dict['draft_slot'] = draft_slot
 
 
     # Draft pick is a future pick, get its projected KTC value
