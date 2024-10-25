@@ -12,12 +12,12 @@ from frontend_api.cache.get_league_data import get_league_data
 from frontend_api.models import LeagueUser
 from logger_util import logger
 
-PAGE_SIZE = 20
+PAGE_SIZE = 50
 
 
 def get_trades(request: Request, sleeper_league_id: str, roster_id: str = 'all') -> json:
     page: int = request.GET.get('page', 1)
-    logger.debug(f"Getting league trades for league: {sleeper_league_id}, roster_id: {roster_id}, page: {page}")
+    logger.info(f"Getting league trades for league: {sleeper_league_id}, roster_id: {roster_id}, page: {page}")
 
     # get sleeper league data
     league_data: json = get_league_data(sleeper_league_id)
@@ -224,10 +224,12 @@ def get_traded_player_data(
 
     ktc_values = []
 
-    if player is None:
-        player = {"player_name": "Unknown Player"}
-    else:
+    if player is None:  # player won't be in the player_dict if the player was discovered via a draft pick
+        player_instance = Players.objects.filter(sleeper_player_id=int(key_player_id)).first()
+        if player_instance:
+            player: dict = {'player_name': player_instance.player_name}
 
+    if player:
         # get ktc values
         ktc_values = (KtcPlayerValues.objects.filter(ktc_player_id__sleeper_player_id=key_player_id)
                       .filter(date__gte=trade_created_at)
@@ -251,7 +253,7 @@ def get_traded_player_data(
 
     return {
         'player_id': key_player_id,
-        'player_name': player['player_name'],
+        'player_name': "Unknown Player" if player is None else player['player_name'],
         'value_when_traded': value_when_traded,
         'ktc_values': ktc_values,
         'latest_value': latest_value,
@@ -276,7 +278,7 @@ def get_draft_pick_data(
         'season': traded_draft_pick['season'],
         'description': f"{traded_draft_pick['season']} {number_with_suffix(traded_draft_pick['round'])} round",
         'value_now_as_of': None,
-        'draft_slot' : None
+        'draft_slot': None
     }
 
     # the draft pick has been used to draft a player
@@ -296,7 +298,6 @@ def get_draft_pick_data(
                 f"Unable to find draft pick for roster_id {traded_draft_pick['roster_id']} for draft_slot {draft_slot}")
 
         player_id_drafted = draft_pick_db_result['player_id']
-        logger.info(f"player_id {player_id_drafted}, drafted at {draft_slot}, by {user_id}")
 
         # get ktc value of this player
         player_data_value: json = get_traded_player_data(
@@ -311,6 +312,8 @@ def get_draft_pick_data(
         draft_pick_value_dict['value_when_traded'] = player_data_value['value_when_traded']
         draft_pick_value_dict['value_now_as_of'] = player_data_value['value_now_as_of']
         draft_pick_value_dict['draft_slot'] = draft_slot
+        draft_pick_value_dict[
+            'description'] = f"{traded_draft_pick['season']} {traded_draft_pick['round']}.{draft_slot}",
 
 
     # Draft pick is a future pick, get its projected KTC value
@@ -331,7 +334,6 @@ def get_draft_pick_data(
                 draft_pick_value_dict['latest_value'] = draft_pick_player_value_db.ktc_value
                 draft_pick_value_dict['value_when_traded'] = draft_pick_player_value_db.ktc_value
 
-    logger.info(draft_pick_value_dict)
     return draft_pick_value_dict
 
 
