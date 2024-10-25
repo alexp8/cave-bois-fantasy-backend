@@ -17,7 +17,7 @@ PAGE_SIZE = 20
 
 def get_trades(request: Request, sleeper_league_id: str, roster_id: str = 'all') -> json:
     page: int = request.GET.get('page', 1)
-    logger.info(f"Getting league trades for league: {sleeper_league_id}, roster_id: {roster_id}, page: {page}")
+    logger.debug(f"Getting league trades for league: {sleeper_league_id}, roster_id: {roster_id}, page: {page}")
 
     # get sleeper league data
     league_data: json = get_league_data(sleeper_league_id)
@@ -48,6 +48,9 @@ def get_trades(request: Request, sleeper_league_id: str, roster_id: str = 'all')
     # filter out trades belonging to different roster_ids
     if roster_id != 'all':
         all_trades: list = [trade for trade in all_trades if int(roster_id) in trade['roster_ids']]
+
+    # order newest to latest
+    all_trades.sort(key=lambda trade_t: trade_t['created_at_millis'], reverse=True)
 
     # apply pagination
     paginator: Paginator = Paginator(all_trades, PAGE_SIZE)
@@ -124,10 +127,8 @@ def calculate_trade_values(
         if roster_id != 'all' and roster_id is int and int(roster_id) not in trade['roster_ids']:
             continue
 
-        trade_obj: json = {
-            'sleeper_league_id': trade['sleeper_league_id'],
-            'total_current_value': 0,
-            'total_value_when_traded': 0
+        trade_obj: dict = {
+            'sleeper_league_id': trade['sleeper_league_id']
         }
 
         # Initialize the roster_id entry in trade_obj
@@ -150,8 +151,8 @@ def calculate_trade_values(
                 trade_created_at=trade['created_at_yyyy_mm_dd']
             )
             trade_obj[traded_draft_pick['owner_id']]['draft_picks'].append(draft_pick_value)
-            trade_obj['total_current_value'] += draft_pick_value['latest_value']
-            trade_obj['total_value_when_traded'] += draft_pick_value['value_when_traded']
+            trade_obj[traded_draft_pick['owner_id']]['total_current_value'] += draft_pick_value['latest_value']
+            trade_obj[traded_draft_pick['owner_id']]['total_value_when_traded'] += draft_pick_value['value_when_traded']
 
         # grab values from traded_players
         for key_player_id, value_roster_id in trade['adds'].items():
@@ -161,8 +162,8 @@ def calculate_trade_values(
                 trade_created_at=trade['created_at_yyyy_mm_dd']
             )
             trade_obj[value_roster_id]['players'].append(player_value_data)
-            trade_obj['total_current_value'] += player_value_data['latest_value']
-            trade_obj['total_value_when_traded'] += player_value_data['value_when_traded']
+            trade_obj[value_roster_id]['total_current_value'] += player_value_data['latest_value']
+            trade_obj[value_roster_id]['total_value_when_traded'] += player_value_data['value_when_traded']
 
         trade_obj.update({
             'created_at_millis': trade['created_at_millis'],
@@ -177,10 +178,6 @@ def calculate_trade_values(
         set_trade_winner(trade, trade_obj)
 
         updated_trades.append(trade_obj)
-
-        break  # TODO remove
-
-    updated_trades.sort(key=lambda trade_t: trade_t['created_at_millis'], reverse=True)
 
     return updated_trades
 
@@ -334,6 +331,7 @@ def get_draft_pick_data(
                 draft_pick_value_dict['latest_value'] = draft_pick_player_value_db.ktc_value
                 draft_pick_value_dict['value_when_traded'] = draft_pick_player_value_db.ktc_value
 
+    logger.info(draft_pick_value_dict)
     return draft_pick_value_dict
 
 

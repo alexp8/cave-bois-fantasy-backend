@@ -47,5 +47,5 @@ def get_data(sleeper_league_id: str) -> json:
             continue
         trades_list.extend(league_transactions_data)
 
-    logger.info(f"Found {len(trades_list)} trades for league ID {sleeper_league_id}")
+    logger.debug(f"Found {len(trades_list)} trades for league ID {sleeper_league_id}")
     return trades_list
