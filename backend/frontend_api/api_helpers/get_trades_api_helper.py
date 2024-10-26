@@ -113,6 +113,33 @@ def get_draft_data(sleeper_league_id: str, previous_leagues: list[json]) -> dict
     return draft_data_dict
 
 
+# Find each roster's most valuable item in the trade
+def set_most_valuable(trade_obj):
+    for roster_id in trade_obj['roster_ids']:
+
+        max_value: int = -1
+        max_value_item = ""
+        for player in trade_obj[roster_id]['players']:
+            if player['value_when_traded'] > max_value and player['player_name'] != 'Unknown Player':
+                max_value=player['value_when_traded']
+                max_value_item=player['player_name']
+
+        trade_obj[roster_id]['most_valuable_player'] = max_value_item
+        max_value: int = -1
+        max_value_item = ""
+
+        for draft_pick in trade_obj[roster_id]['draft_picks']:
+            if draft_pick['value_when_traded'] > max_value:
+                max_value=draft_pick['value_when_traded']
+                max_value_item=draft_pick['description']
+
+        trade_obj[roster_id]['most_valuable_draft_pick'] = max_value_item
+
+        if max_value == -1 and trade_obj[roster_id]['fab'] > 0:
+            max_value_item = f"{trade_obj[roster_id]['fab']}"
+
+        trade_obj[roster_id]['most_valuable_draft'] = max_value_item
+
 # Iterate over a list of trades and calculate values
 def calculate_trade_values(
         draft_data,
@@ -175,7 +202,10 @@ def calculate_trade_values(
         })
 
         # see who won the trade
-        set_trade_winner(trade, trade_obj)
+        set_trade_winner(trade['roster_ids'], trade_obj)
+
+        # set most valuable piece
+        set_most_valuable(trade_obj)
 
         updated_trades.append(trade_obj)
 
@@ -350,12 +380,12 @@ def init_roster_trade(roster_id: int, user: LeagueUser) -> json:
     }
 
 
-def set_trade_winner(trade, trade_obj):
+def set_trade_winner(roster_ids, trade_obj):
     # Find the maximum total current value
-    max_value = max(trade_obj[roster_id]['total_current_value'] for roster_id in trade['roster_ids'])
+    max_value = max(trade_obj[roster_id]['total_current_value'] for roster_id in roster_ids)
 
     # Mark the rosters with the maximum value as winners
-    for roster_id in trade['roster_ids']:
+    for roster_id in roster_ids:
         trade_obj[roster_id]['won'] = (trade_obj[roster_id]['total_current_value'] == max_value)
 
 
