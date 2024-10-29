@@ -15,7 +15,7 @@ from logger_util import logger
 PAGE_SIZE = 50
 
 
-def get_trades(request: Request, sleeper_league_id: str, roster_id: str = 'all') -> json:
+def get_trades(request: Request, sleeper_league_id: str, roster_id: str = 'all', transaction_id: str = None, paginate: bool = True) -> json:
     page: int = request.GET.get('page', 1)
     logger.info(f"Getting league trades for league: {sleeper_league_id}, roster_id: {roster_id}, page: {page}")
 
@@ -52,9 +52,21 @@ def get_trades(request: Request, sleeper_league_id: str, roster_id: str = 'all')
     # order newest to latest
     all_trades.sort(key=lambda trade_t: trade_t['created_at_millis'], reverse=True)
 
+    # TODO if transactionId is specified, return the page with that tradeId
+
     # apply pagination
-    paginator: Paginator = Paginator(all_trades, PAGE_SIZE)
-    paginated_trades: json = paginator.get_page(page)
+    paginated_trades = all_trades
+    total_pages = 1
+    page = 1
+    has_next = False
+    has_previous = False
+    if paginate:
+        paginator: Paginator = Paginator(all_trades, PAGE_SIZE)
+        paginated_trades: json = paginator.get_page(page)
+        total_pages = paginator.num_pages
+        page = paginated_trades.number
+        has_next = paginated_trades.has_next()
+        has_previous = paginated_trades.has_previous()
 
     # Get all player IDs from the trades (adds) in a single query
     player_ids: set = set()
@@ -69,7 +81,7 @@ def get_trades(request: Request, sleeper_league_id: str, roster_id: str = 'all')
     player_dict: dict = {player['sleeper_player_id']: player for player in players}
 
     # loop over trades and build response
-    updated_trades = calculate_trade_values(draft_data=draft_data, league_users=league_users,
+    trades_with_ktc_values: list = calculate_trade_values(draft_data=draft_data, league_users=league_users,
                                             paginated_trades=paginated_trades, player_dict=player_dict,
                                             roster_id=roster_id)
 
@@ -80,15 +92,15 @@ def get_trades(request: Request, sleeper_league_id: str, roster_id: str = 'all')
         'league_season': league_data['season'],
         'league_avatar': league_data['avatar'],
         'roster_id': roster_id,
-        'page': paginated_trades.number,
+        'page': page,
         'page_size': PAGE_SIZE,
-        'total_pages': paginator.num_pages,
-        'total_trades': paginator.count,
-        'has_next': paginated_trades.has_next(),
-        'has_previous': paginated_trades.has_previous(),
+        'total_pages': total_pages,
+        'total_trades': len(all_trades),
+        'has_next': has_next,
+        'has_previous': has_previous,
         'previous_leagues': previous_leagues,
         'league_users': LeagueUser.to_json(league_users),
-        'trades': updated_trades
+        'trades': trades_with_ktc_values
     }
 
 
@@ -121,8 +133,8 @@ def set_most_valuable(trade_obj):
         max_value_item = ""
         for player in trade_obj[roster_id]['players']:
             if player['value_when_traded'] > max_value and player['player_name'] != 'Unknown Player':
-                max_value=player['value_when_traded']
-                max_value_item=player['player_name']
+                max_value = player['value_when_traded']
+                max_value_item = player['player_name']
 
         trade_obj[roster_id]['most_valuable_player'] = max_value_item
         max_value: int = -1
@@ -130,15 +142,11 @@ def set_most_valuable(trade_obj):
 
         for draft_pick in trade_obj[roster_id]['draft_picks']:
             if draft_pick['value_when_traded'] > max_value:
-                max_value=draft_pick['value_when_traded']
-                max_value_item=draft_pick['description']
+                max_value = draft_pick['value_when_traded']
+                max_value_item = draft_pick['description']
 
         trade_obj[roster_id]['most_valuable_draft_pick'] = max_value_item
 
-        if max_value == -1 and trade_obj[roster_id]['fab'] > 0:
-            max_value_item = f"{trade_obj[roster_id]['fab']}"
-
-        trade_obj[roster_id]['most_valuable_draft'] = max_value_item
 
 # Iterate over a list of trades and calculate values
 def calculate_trade_values(
@@ -383,10 +391,16 @@ def init_roster_trade(roster_id: int, user: LeagueUser) -> json:
 def set_trade_winner(roster_ids, trade_obj):
     # Find the maximum total current value
     max_value = max(trade_obj[roster_id]['total_current_value'] for roster_id in roster_ids)
+    all_same = all(trade_obj[roster_id]['total_current_value'] == max_value for roster_id in roster_ids)
 
-    # Mark the rosters with the maximum value as winners
+    # Mark the rosters with the maximum value as winners or set tie if all values are the same
     for roster_id in roster_ids:
-        trade_obj[roster_id]['won'] = (trade_obj[roster_id]['total_current_value'] == max_value)
+        if all_same:
+            trade_obj[roster_id]['tie'] = True
+            trade_obj[roster_id]['won'] = False
+        else:
+            trade_obj[roster_id]['tie'] = False
+            trade_obj[roster_id]['won'] = (trade_obj[roster_id]['total_current_value'] == max_value)
 
 
 def get_previous_league_ids(league_data):
