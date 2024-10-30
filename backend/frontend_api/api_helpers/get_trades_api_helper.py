@@ -57,14 +57,12 @@ def get_trades(request: Request, sleeper_league_id: str, roster_id: str = 'all',
     # apply pagination
     paginated_trades = all_trades
     total_pages = 1
-    page = 1
     has_next = False
     has_previous = False
     if paginate:
         paginator: Paginator = Paginator(all_trades, PAGE_SIZE)
         paginated_trades: json = paginator.get_page(page)
         total_pages = paginator.num_pages
-        page = paginated_trades.number
         has_next = paginated_trades.has_next()
         has_previous = paginated_trades.has_previous()
 
