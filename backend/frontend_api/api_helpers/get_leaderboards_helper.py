@@ -16,15 +16,21 @@ def get_leaderboard(request: Request, sleeper_league_id: str) -> json:
 
     logger.info(f"getting leaderboards on {len(trade_values_result['trades'])} trades")
 
-    return calculate_leaderboard(trade_values_result['league_users'], trade_values_result['trades'])
+    return calculate_leaderboard(trade_values_result)
 
-
-def calculate_leaderboard(league_users: dict, trades: list) -> dict:
+# ['league_users'], trade_values_result['trades'], trade_values_result['league']
+def calculate_leaderboard(trades_result: json) -> json:
     # leaderboard dict
-    leaderboard_dict = {}
+    leaderboard_dict = {
+        "league_id": trades_result['league_id'],
+        "league_name": trades_result['league_name'],
+        "league_avatar": trades_result['league_avatar'],
+        "roster_ids": trades_result['roster_ids'],
+        "league_users": trades_result['league_users']
+    }
 
     # init leaderboard_dict
-    for league_user in league_users:
+    for league_user in trades_result['league_users']:
         leaderboard_dict[league_user['roster_id']] = {
             "username": league_user['user_name'],
             "roster_id": league_user['roster_id'],
@@ -37,7 +43,7 @@ def calculate_leaderboard(league_users: dict, trades: list) -> dict:
             "best_trade": None
         }
 
-    for trade in trades:
+    for trade in trades_result['trades']:
 
         if len(trade['roster_ids']) != 2:
             continue
