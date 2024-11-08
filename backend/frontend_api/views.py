@@ -1,9 +1,12 @@
+import json
 import traceback
 
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from rest_framework.request import Request
 
+from fantasy_trades_app.models import Feedback
 from fantasy_trades_app.settings import VERSION
 from frontend_api.api_helpers import get_trades_api_helper, get_leagues_helper, get_leaderboards_helper
 from frontend_api.api_helpers.get_trade_api_helper import get_trade_data
@@ -84,3 +87,72 @@ def get_leagues(request: Request, user_name: str) -> JsonResponse:
         logger.error(msg="Exception occurred", exc_info=True)
         logger.error(msg=traceback.format_exc())
         return JsonResponse(data={"error": "Error while fetching user info"}, status=500, safe=False)
+
+
+@api_view(['POST'])
+def submit_feedback(request):
+    try:
+        data = json.loads(request.body)
+
+        # Validate JSON input
+        category = data.get('category')
+        message = data.get('message')
+        if not category or not message:
+            return JsonResponse({"error": "Missing 'category' or 'message' in request data"}, status=400)
+
+        feedback = Feedback(category=category, message=message)
+        feedback.save()
+
+        return JsonResponse({"status": "Feedback submitted successfully"}, status=200)
+
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON format", exc_info=True)
+        return JsonResponse({"error": "Invalid JSON format"}, status=200)
+    except Exception as e:
+        logger.error("Exception occurred while saving feedback", exc_info=True)
+        return JsonResponse({"error": f"Failed to send email: {str(e)}"}, status=200)
+
+
+@api_view(['GET'])
+def get_feedback(request):
+    try:
+        # Get page number from query parameters, default to 1
+        page = request.GET.get('page', 1)
+
+        # Sort Feedback by created_at descending
+        feedback_list = Feedback.objects.order_by('-created_at')
+
+        # Initialize paginator with 20 items per page
+        paginator = Paginator(feedback_list, 20)
+
+        # Paginate and handle possible pagination errors
+        try:
+            feedback_results = paginator.get_page(page)
+        except PageNotAnInteger:
+            feedback_results = paginator.get_page(1)
+        except EmptyPage:
+            feedback_results = paginator.get_page(paginator.num_pages)
+
+        # Serialize feedback data
+        feedback_data = [
+            {
+                "category": feedback.category,
+                "message": feedback.message,
+                "created_at": feedback.created_at.isoformat(),
+            } for feedback in feedback_results
+        ]
+
+        # Prepare response data
+        return JsonResponse(
+            data={
+                "total_pages": paginator.num_pages,
+                "has_next": feedback_results.has_next(),
+                "has_previous": feedback_results.has_previous(),
+                "feedback_results": feedback_data
+            },
+            status=200
+        )
+
+    except Exception as e:
+        logger.error("Exception occurred while retrieving feedback", exc_info=True)
+        return JsonResponse({"error": f"Failed to retrieve feedback: {str(e)}"}, status=500)

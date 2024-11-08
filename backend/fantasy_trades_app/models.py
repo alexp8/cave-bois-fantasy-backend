@@ -32,3 +32,13 @@ class KtcPlayerValues(models.Model):
     def __str__(self):
         return f"{self.ktc_player_id.player_name} - {self.ktc_value} on {self.date}"
 
+
+from django.db import models
+
+class Feedback(models.Model):
+    category = models.CharField(max_length=255)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.category}: {self.message[:50]}"

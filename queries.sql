@@ -36,9 +36,15 @@ select count(*) FROM public.fantasy_trades_app_ktcplayervalues
 SELECT COUNT(DISTINCT ktc_player_id)
 FROM public.fantasy_trades_app_ktcplayervalues;
 
+-- feedback
+select * from public.fantasy_trades_app_feedback;
+
 --- DELETE
 DELETE FROM public.fantasy_trades_app_players;
 DELETE FROM public.fantasy_trades_app_ktcplayervalues;
+
+DELETE FROM public.django_migrations where id = 20;
+
 
 DELETE FROM public.fantasy_trades_app_players
 where sleeper_player_id is null
@@ -56,6 +62,7 @@ WHERE ktc_player_id IN (
 -- DROPS
 -- DROP TABLE public.fantasy_trades_app_ktcplayervalues;
 -- DROP TABLE public.fantasy_trades_app_players;
+ DROP TABLE public.fantasy_trades_app_feedback;
 
 
 

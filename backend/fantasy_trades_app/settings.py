@@ -9,18 +9,25 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+import os
+from django.core.exceptions import ImproperlyConfigured
+
+def get_env_variable(var_name):
+    try:
+        return os.environ[var_name]
+    except KeyError:
+        raise ImproperlyConfigured(f"Set the {var_name} environment variable.")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-nj-d)a4)gkt=tq^yo9pbvu7)q6f23o6eqey*7*cg+h0g^aq^8p'
+SECRET_KEY = get_env_variable("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -101,9 +108,9 @@ WSGI_APPLICATION = 'fantasy_trades_app.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'fantasy_trades_db',
-        'USER': 'fantasy_trades_appuser',
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+        'NAME': get_env_variable('POSTGRES_DB'),
+        'USER': get_env_variable('POSTGRES_USER'),
+        'PASSWORD': get_env_variable('POSTGRES_PASSWORD'),
         'HOST': 'db',  # Use 'db' if it's running in Docker with the name 'db'
         'PORT': '5432',
     }
@@ -188,3 +195,11 @@ CACHES = {
 }
 
 VERSION = '1.0.0'
+
+# settings.py
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = get_env_variable("EMAIL_USERNAME")
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
