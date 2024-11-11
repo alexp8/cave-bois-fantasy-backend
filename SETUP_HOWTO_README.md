@@ -17,7 +17,7 @@
 2. Clone github project into your directory
    * `git clone https://github.com/alexp8/cave-bois-fantasy-backend.git`
 3. Setup Pycharm interpreter
-   * <img src="how-to-images%2Fpycharm%20interpreter.png" alt="Alt text" width="600" height="450">
+ * <img src="how-to-images%2Fpycharm%20interpreter.png" alt="Alt text" width="600" height="450">
 4. Right click 'backend' and mark as 'Sources Root'
 5. Build docker
    * `docker-compose build`
@@ -26,6 +26,7 @@
 7. Run migrations
    * `docker exec -it fantasy_trades_app /bin/bash`
    * `python manage.py migrate`
+   * `python populate_player_data_into_db.py`  # migrate data from `migration_data/ktc_player_data/`
 
 ##### Docker commands
 - `docker-compose build --no-cache`  _build docker images fresh_
@@ -41,9 +42,4 @@
 - `python manage.py shell`
 
 ---
-
-#### Git Tip
-   * Disable "Use non-modal commit interface"
-   * <img src="how-to-images/git non_modal.png" alt="Alt text" width="400" height="200">
-   * <img src="how-to-images/git.png" alt="Alt text" width="300" height="200">
  
